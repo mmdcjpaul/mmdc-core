@@ -6,6 +6,7 @@ import { sqliteAdapter } from '@payloadcms/db-sqlite';
 import { buildConfig } from 'payload';
 import sharp from 'sharp';
 
+import { Media } from './src/collections/Media.ts';
 import { Users } from './src/collections/Users.ts';
 import { loadEnvironment } from './src/environment.ts';
 
@@ -21,8 +22,11 @@ const database = environment.internal.compatibilityDatabaseURL
   : postgresAdapter({
       pool: {
         connectionString: environment.internal.databaseURL,
-        max: 10
+        max: environment.internal.databasePoolMax,
+        connectionTimeoutMillis: environment.internal.databaseConnectionTimeoutMs,
+        idleTimeoutMillis: environment.internal.databaseIdleTimeoutMs
       },
+      migrationDir: path.resolve(dirname, 'src/migrations'),
       push: false
     });
 
@@ -33,7 +37,7 @@ export default buildConfig({
       baseDir: dirname
     }
   },
-  collections: [Users],
+  collections: [Users, Media],
   db: database,
   endpoints: [
     {

@@ -7,6 +7,9 @@ export type EnvironmentSnapshot = {
   internal: {
     databaseURL: string | undefined;
     databaseDirectURL: string | undefined;
+    databasePoolMax: number;
+    databaseConnectionTimeoutMs: number;
+    databaseIdleTimeoutMs: number;
     internalAPIURL: string | undefined;
     compatibilityDatabaseURL: string | undefined;
   };
@@ -27,10 +30,21 @@ export class EnvironmentValidationError extends Error {
 
 const buildSecret = 'mmdc-build-only-secret-placeholder';
 const buildDatabaseURL = 'postgresql://127.0.0.1:1/mmdc-build-only';
+const defaultDatabasePoolMax = 10;
+const defaultDatabaseConnectionTimeoutMs = 5_000;
+const defaultDatabaseIdleTimeoutMs = 30_000;
 
 const nonEmpty = (value: string | undefined): string | undefined => {
   const trimmed = value?.trim();
   return trimmed ? trimmed : undefined;
+};
+
+const boundedInteger = (value: string | undefined, fallback: number, minimum: number, maximum: number): number => {
+  if (!value?.trim()) return fallback;
+
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed < minimum || parsed > maximum) return fallback;
+  return parsed;
 };
 
 const isURLWithProtocol = (value: string | undefined, protocols: string[]): boolean => {
@@ -57,6 +71,14 @@ export const loadEnvironment = (
     internal: {
       databaseURL: nonEmpty(env.DATABASE_URL),
       databaseDirectURL: nonEmpty(env.DATABASE_DIRECT_URL),
+      databasePoolMax: boundedInteger(env.DATABASE_POOL_MAX, defaultDatabasePoolMax, 1, 20),
+      databaseConnectionTimeoutMs: boundedInteger(
+        env.DATABASE_CONNECTION_TIMEOUT_MS,
+        defaultDatabaseConnectionTimeoutMs,
+        100,
+        30_000
+      ),
+      databaseIdleTimeoutMs: boundedInteger(env.DATABASE_IDLE_TIMEOUT_MS, defaultDatabaseIdleTimeoutMs, 1_000, 120_000),
       internalAPIURL: nonEmpty(env.INTERNAL_API_URL),
       compatibilityDatabaseURL: nonEmpty(env.MMDC_COMPATIBILITY_DATABASE)
     },

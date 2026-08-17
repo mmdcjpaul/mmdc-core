@@ -6,5 +6,21 @@ export const Users: CollectionConfig = {
   admin: {
     useAsTitle: 'email'
   },
-  fields: []
+  fields: [
+    {
+      name: 'role',
+      type: 'select',
+      defaultValue: 'viewer',
+      hasMany: false,
+      options: [
+        { label: 'Administrator', value: 'admin' },
+        { label: 'Editor', value: 'editor' },
+        { label: 'Author', value: 'author' },
+        { label: 'Viewer', value: 'viewer' }
+      ],
+      required: true,
+      saveToJWT: true
+    }
+  ],
+  timestamps: true
 };
