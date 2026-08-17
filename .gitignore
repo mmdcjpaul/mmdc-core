@@ -1,2 +1,9 @@
 .loop-logs/
-
+node_modules/
+.pnpm-store/
+.next/
+out/
+coverage/
+*.tsbuildinfo
+.env*
+!.env.example
