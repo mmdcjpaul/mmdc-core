@@ -11,6 +11,9 @@ importers:
 
   .:
     dependencies:
+      '@aws-sdk/client-s3':
+        specifier: 3.1111.0
+        version: 3.1111.0
       '@payloadcms/db-postgres':
         specifier: 3.88.0
         version: 3.88.0(@libsql/client@0.14.0)(payload@3.88.0(graphql@16.14.2)(supports-color@7.2.0)(typescript@5.8.3))(supports-color@7.2.0)
@@ -39,9 +42,6 @@ importers:
         specifier: 0.34.5
         version: 0.34.5
     devDependencies:
-      '@aws-sdk/client-s3':
-        specifier: 3.1111.0
-        version: 3.1111.0
       '@types/node':
         specifier: 24.0.3
         version: 24.0.3

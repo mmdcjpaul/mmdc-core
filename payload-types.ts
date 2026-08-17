@@ -162,6 +162,23 @@ export interface Media {
   id: number;
   alt: string;
   caption?: string | null;
+  rightsStatus?: ('owned' | 'licensed' | 'public-domain' | 'cc0' | 'cc-by' | 'cc-by-sa') | null;
+  rightsHolder?: string | null;
+  isDecorative?: boolean | null;
+  detectedMimeType?: string | null;
+  contentHash?: string | null;
+  eligibilityStatus?: ('pending' | 'eligible' | 'ineligible') | null;
+  storageState?: ('pending' | 'ready' | 'unavailable') | null;
+  canonicalKey?: string | null;
+  variantManifest?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
   prefix?: string | null;
   updatedAt: string;
   createdAt: string;
@@ -174,6 +191,24 @@ export interface Media {
   height?: number | null;
   focalX?: number | null;
   focalY?: number | null;
+  sizes?: {
+    thumbnail?: {
+      url?: string | null;
+      width?: number | null;
+      height?: number | null;
+      mimeType?: string | null;
+      filesize?: number | null;
+      filename?: string | null;
+    };
+    card?: {
+      url?: string | null;
+      width?: number | null;
+      height?: number | null;
+      mimeType?: string | null;
+      filesize?: number | null;
+      filename?: string | null;
+    };
+  };
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -394,6 +429,15 @@ export interface UsersSelect<T extends boolean = true> {
 export interface MediaSelect<T extends boolean = true> {
   alt?: T;
   caption?: T;
+  rightsStatus?: T;
+  rightsHolder?: T;
+  isDecorative?: T;
+  detectedMimeType?: T;
+  contentHash?: T;
+  eligibilityStatus?: T;
+  storageState?: T;
+  canonicalKey?: T;
+  variantManifest?: T;
   prefix?: T;
   updatedAt?: T;
   createdAt?: T;
@@ -406,6 +450,30 @@ export interface MediaSelect<T extends boolean = true> {
   height?: T;
   focalX?: T;
   focalY?: T;
+  sizes?:
+    | T
+    | {
+        thumbnail?:
+          | T
+          | {
+              url?: T;
+              width?: T;
+              height?: T;
+              mimeType?: T;
+              filesize?: T;
+              filename?: T;
+            };
+        card?:
+          | T
+          | {
+              url?: T;
+              width?: T;
+              height?: T;
+              mimeType?: T;
+              filesize?: T;
+              filename?: T;
+            };
+      };
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema

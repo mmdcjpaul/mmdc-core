@@ -18,6 +18,9 @@ export const mediaObjectKey = (recordPrefix: string, filename: string): string =
   return `media/${safePrefix}/${safeFilename}`;
 };
 
+export const mediaDeliveryPath = (recordPrefix: string, filename: string): string =>
+  `/api/media-delivery/${encodeURIComponent(recordPrefix)}?file=${encodeURIComponent(path.posix.basename(filename))}`;
+
 export const ensureMediaRecordPrefix = ({
   data,
   operation,

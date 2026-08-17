@@ -8,6 +8,9 @@ import { buildConfig } from 'payload';
 import sharp from 'sharp';
 
 import { Media } from './src/collections/Media.ts';
+import { mediaDeliveryEndpoint } from './src/media-delivery.ts';
+import { MAX_MEDIA_BYTES } from './src/media-governance.ts';
+import { mediaDeliveryPath } from './src/media-storage.ts';
 import { FoundationSearchRecords } from './src/collections/FoundationSearchRecords.ts';
 import { Users } from './src/collections/Users.ts';
 import { loadEnvironment } from './src/environment.ts';
@@ -56,6 +59,10 @@ const mediaStoragePlugin =
         bucket: environment.media.bucket ?? 'mmdc-build-only-media',
         collections: {
           media: {
+            generateFileURL: ({ filename, prefix }) =>
+              prefix
+                ? mediaDeliveryPath(prefix, filename)
+                : `/api/media-delivery/unknown?file=${encodeURIComponent(filename)}`,
             prefix: 'media'
           }
         },
@@ -87,8 +94,14 @@ export default buildConfig({
     tasks: [foundationSearchTask, foundationSearchProjectionTask]
   },
   plugins: mediaStoragePlugin ? [mediaStoragePlugin] : [],
+  upload: {
+    limits: {
+      fileSize: MAX_MEDIA_BYTES
+    }
+  },
   db: database,
   endpoints: [
+    mediaDeliveryEndpoint,
     {
       path: '/foundation',
       method: 'get',
