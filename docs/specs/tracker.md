@@ -4,7 +4,7 @@ plan_version: 0.1
 last_updated: 2026-08-17
 status_values: Not started | In progress | Done | Blocked
 progress_total: 25
-progress_done: 0
+progress_done: 1
 progress_blocked: 0
 ---
 
@@ -14,7 +14,7 @@ The first eligible `Not started` row is the next ticket. `loop.sh` resumes an `I
 
 | ID | Feature | Task | Status | Depends on | Spec |
 | --- | --- | --- | --- | --- | --- |
-| F00-T01 | Project controls | Record architecture and access decisions | Not started | None | docs/specs/F00-T01-architecture-decisions/SPEC.md |
+| F00-T01 | Project controls | Record architecture and access decisions | Done | None | docs/specs/F00-T01-architecture-decisions/SPEC.md |
 | F00-T02 | Project controls | Establish ownership, environment, secret, cost, and policy registers | Not started | F00-T01 | docs/specs/F00-T02-project-registers/SPEC.md |
 | F01-T01 | Reproducible scaffold | Create the exact-version Next.js application scaffold | Not started | F00-T01 | docs/specs/F01-T01-application-scaffold/SPEC.md |
 | F01-T02 | Reproducible scaffold | Integrate Payload, environment validation, and quality commands | Not started | F01-T01 | docs/specs/F01-T02-payload-tooling/SPEC.md |
