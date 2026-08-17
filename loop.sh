@@ -213,7 +213,9 @@ while :; do
     agent_log="$LOGDIR/${ticket}-attempt-${attempt}.log"
     log "attempt $attempt/$MAX_ATTEMPTS"
 
-    codex_args=(exec --model "$MODEL" --sandbox workspace-write --approve-for-me --cd "$ROOT")
+    # --approve-for-me already selects the workspace-write sandbox. Codex CLI
+    # rejects combining it with an explicit --sandbox option.
+    codex_args=(exec --model "$MODEL" --approve-for-me --cd "$ROOT")
     if [ -n "$REASONING_EFFORT" ]; then
       codex_args+=(--config "model_reasoning_effort=\"$REASONING_EFFORT\"")
     fi

@@ -45,7 +45,7 @@ For example, Luna with high reasoning is:
 MAX_TICKETS=1 ./loop.sh gpt-5.6-luna high
 ```
 
-The loop uses `codex exec --model <model-id> --config model_reasoning_effort="<reasoning-effort>" --sandbox workspace-write --approve-for-me`. This matches the installed Codex CLI's non-interactive stdin interface while retaining a workspace boundary and automatic approval review. Authentication must already be configured.
+The loop uses `codex exec --model <model-id> --config model_reasoning_effort="<reasoning-effort>" --approve-for-me`. The `--approve-for-me` option enables automatic approval review and selects the `workspace-write` sandbox; the Codex CLI rejects combining it with an explicit `--sandbox` option. Authentication must already be configured.
 
 ## Options
 
