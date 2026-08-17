@@ -5,9 +5,11 @@
 ## Deterministic rule
 
 ```text
-resume the In progress ticket, otherwise take the first Not started ticket
+resume the In progress ticket and validate retained work first,
+otherwise take the first Not started ticket
   -> require all dependencies to be Done
   -> set In progress
+  -> retained work already passes: set Done, commit, continue
   -> ask Codex to implement only that ticket
   -> ./validation.sh <ticket>
        exit 0: set Done, commit, continue
@@ -65,13 +67,14 @@ The loop uses `codex exec --model <model-id> --config model_reasoning_effort="<r
 | `MAX_TICKETS` | `0` | Stop after N passing tickets; `0` means no limit |
 | `NO_COMMIT` | unset | Set to `1` to skip one commit per passing ticket |
 | `ALLOW_DIRTY` | unset | Set to `1` to explicitly allow a dirty baseline |
+| `LOOP_VERBOSE` | unset | Set to `1` to stream the full Codex transcript instead of the concise progress view |
 
-Logs are written under `.loop-logs/`. After the final failed attempt, the loop appends sanitized validation output to `BLOCKED.md`, marks the ticket `Blocked`, and exits nonzero.
+The default terminal view shows the current ticket, attempt, a 30-second heartbeat, validation result, and overall progress. Full Codex transcripts and validation details are written under `.loop-logs/`; set `LOOP_VERBOSE=1` only when live transcript output is useful. After the final failed attempt, the loop appends sanitized validation output to `BLOCKED.md`, marks the ticket `Blocked`, and exits nonzero.
 
 The loop refuses a fresh committed run when the working tree is dirty unless `NO_COMMIT=1` or `ALLOW_DIRTY=1` is explicit. This prevents a ticket commit from accidentally absorbing unrelated work. Interrupted `In progress` tickets may resume with their working changes. `AGENTS.md`, the implementation plan, EARS specs, tracker state, and loop/validation harness are fingerprinted per ticket; an agent edit to those controls fails the attempt.
 
 ## Guarded work
 
-Some tickets require human decisions, credentials, approvals, or external cloud evidence. Codex must not invent them. If the requirement cannot be satisfied with current authority and evidence, validation remains nonzero and the loop stops. Resolve the blocker, remove or close its `BLOCKED.md` entry, set the tracker row back to `Not started`, and rerun.
+Some tickets require human decisions, credentials, approvals, or external cloud evidence. Codex must not invent them. If the requirement cannot be satisfied with current authority and evidence, validation remains nonzero and the loop stops. Resolve the blocker and remove or close its `BLOCKED.md` entry. Set a retained partial implementation to `In progress` so the loop resumes it; use `Not started` only when restarting from a clean worktree.
 
 Before an unattended run, review the selected model's edits on the first ticket, confirm the acceptance script meaningfully tests every criterion, and ensure the repository has a recoverable Git baseline.

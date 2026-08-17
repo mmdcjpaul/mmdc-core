@@ -16,6 +16,7 @@ GUARDED_MAX_ATTEMPTS="${GUARDED_MAX_ATTEMPTS:-1}"
 MAX_TICKETS="${MAX_TICKETS:-0}"
 NO_COMMIT="${NO_COMMIT:-}"
 ALLOW_DIRTY="${ALLOW_DIRTY:-}"
+LOOP_VERBOSE="${LOOP_VERBOSE:-}"
 
 if [ -z "$MODEL" ]; then
   printf 'Usage: %s <codex-model> [reasoning-effort]\n' "${0##*/}" >&2
@@ -41,10 +42,10 @@ done
 cd "$ROOT" || exit 1
 mkdir -p "$LOGDIR"
 
-log() { printf '\n\033[1m[loop]\033[0m %s\n' "$*"; }
+log() { printf '\033[1m[loop]\033[0m %s\n' "$*"; }
 
 control_fingerprint() {
-  cksum AGENTS.md IMPLEMENTATION_PLAN.md validation.sh loop.sh docs/specs/README.md docs/specs/F*/SPEC.md \
+  cksum AGENTS.md IMPLEMENTATION_PLAN.md LOOP.md validation.sh loop.sh docs/specs/README.md docs/specs/F*/SPEC.md \
     | cksum \
     | awk '{ print $1 ":" $2 }'
 }
@@ -60,6 +61,15 @@ tracker_rows() {
       print $2 "\t" $3 "\t" $4 "\t" $5 "\t" $6 "\t" $7
     }
   ' "$TRACKER"
+}
+
+show_progress() {
+  local total done blocked open
+  total="$(tracker_rows | wc -l | tr -d ' ')"
+  done="$(tracker_rows | awk -F'\t' '$4 == "Done" { count++ } END { print count + 0 }')"
+  blocked="$(tracker_rows | awk -F'\t' '$4 == "Blocked" { count++ } END { print count + 0 }')"
+  open=$((total - done - blocked))
+  log "progress: $done/$total done · $blocked blocked · $open open"
 }
 
 next_ticket() {
@@ -181,6 +191,35 @@ write_blocked() {
   } >> "$BLOCKED"
 }
 
+run_agent() {
+  local ticket="$1" attempt="$2" attempt_limit="$3" verify_log="$4" agent_log="$5"
+  local agent_pid elapsed next_update
+
+  if [ -n "$LOOP_VERBOSE" ]; then
+    build_prompt "$ticket" "$attempt" "$attempt_limit" "$verify_log" \
+      | "$CODEX_BIN" "${codex_args[@]}" - 2>&1 \
+      | tee "$agent_log"
+    return "${PIPESTATUS[1]}"
+  fi
+
+  build_prompt "$ticket" "$attempt" "$attempt_limit" "$verify_log" \
+    | "$CODEX_BIN" "${codex_args[@]}" - >"$agent_log" 2>&1 &
+  agent_pid=$!
+  elapsed=0
+  next_update=30
+
+  while kill -0 "$agent_pid" 2>/dev/null; do
+    sleep 5
+    elapsed=$((elapsed + 5))
+    if [ "$elapsed" -ge "$next_update" ] && kill -0 "$agent_pid" 2>/dev/null; then
+      log "$ticket attempt $attempt still running (${elapsed}s; full log: .loop-logs/${agent_log##*/})"
+      next_update=$((next_update + 30))
+    fi
+  done
+
+  wait "$agent_pid"
+}
+
 if ! command -v "$CODEX_BIN" >/dev/null 2>&1; then
   printf 'loop: Codex executable not found: %s\n' "$CODEX_BIN" >&2
   exit 1
@@ -190,6 +229,8 @@ if ! ./validation.sh --specs; then
   printf 'loop: specification validation failed\n' >&2
   exit 1
 fi
+
+show_progress
 
 blocked_ticket="$(tracker_rows | awk -F'\t' '$4 == "Blocked" { print $1; exit }')"
 if [ -n "$blocked_ticket" ]; then
@@ -223,6 +264,7 @@ while :; do
     exit 1
   fi
 
+  ticket_status="$(ticket_field "$ticket" 4)"
   title="$(ticket_field "$ticket" 3)"
   autonomy="$(ticket_autonomy "$ticket")"
   if [ "$autonomy" != "autonomous" ] && [ "$autonomy" != "guarded" ]; then
@@ -234,17 +276,30 @@ while :; do
     attempt_limit="$GUARDED_MAX_ATTEMPTS"
   fi
 
-  log "$ticket — $title (autonomy: $autonomy, model: $MODEL, reasoning: ${REASONING_EFFORT:-default})"
+  log "$ticket — $title"
+  log "model: $MODEL · reasoning: ${REASONING_EFFORT:-default} · autonomy: $autonomy"
   set_status "$ticket" "In progress"
   protected_fingerprint="$(control_fingerprint)"
   tracker_fingerprint="$(file_fingerprint "$TRACKER")"
 
   passed=0
-  attempt=1
   verify_log="$LOGDIR/${ticket}-validation.log"
-  while [ "$attempt" -le "$attempt_limit" ]; do
+  if [ "$ticket_status" = "In progress" ]; then
+    log "checking retained implementation before starting another agent"
+    if ./validation.sh "$ticket" > "$verify_log" 2>&1 \
+      && [ "$(control_fingerprint)" = "$protected_fingerprint" ] \
+      && [ "$(file_fingerprint "$TRACKER")" = "$tracker_fingerprint" ]; then
+      passed=1
+      log "retained implementation already passes"
+    else
+      log "retained implementation needs repair (details: .loop-logs/${verify_log##*/})"
+    fi
+  fi
+
+  attempt=1
+  while [ "$passed" -ne 1 ] && [ "$attempt" -le "$attempt_limit" ]; do
     agent_log="$LOGDIR/${ticket}-attempt-${attempt}.log"
-    log "attempt $attempt/$attempt_limit"
+    log "attempt $attempt/$attempt_limit started (full log: .loop-logs/${agent_log##*/})"
 
     # --approve-for-me already selects the workspace-write sandbox. Codex CLI
     # rejects combining it with an explicit --sandbox option.
@@ -253,23 +308,21 @@ while :; do
       codex_args+=(--config "model_reasoning_effort=\"$REASONING_EFFORT\"")
     fi
 
-    build_prompt "$ticket" "$attempt" "$attempt_limit" "$verify_log" \
-      | "$CODEX_BIN" "${codex_args[@]}" - 2>&1 \
-      | tee "$agent_log"
+    run_agent "$ticket" "$attempt" "$attempt_limit" "$verify_log" "$agent_log" || true
 
     if [ "$(control_fingerprint)" != "$protected_fingerprint" ] || [ "$(file_fingerprint "$TRACKER")" != "$tracker_fingerprint" ]; then
       {
         printf 'validation: protected plan/spec/harness files or tracker status were modified by the implementation agent\n'
         printf 'validation: revert those edits; ticket behavior belongs in implementation files and tests/acceptance/%s.sh\n' "$ticket"
-        git diff -- AGENTS.md IMPLEMENTATION_PLAN.md validation.sh loop.sh docs/specs/README.md docs/specs/tracker.md docs/specs/F*/SPEC.md 2>/dev/null || true
+        git diff -- AGENTS.md IMPLEMENTATION_PLAN.md LOOP.md validation.sh loop.sh docs/specs/README.md docs/specs/tracker.md docs/specs/F*/SPEC.md 2>/dev/null || true
       } > "$verify_log"
     elif ./validation.sh "$ticket" > "$verify_log" 2>&1; then
       passed=1
       break
     fi
 
-    log "validation failed"
-    tail -n 30 "$verify_log"
+    log "validation failed (details: .loop-logs/${verify_log##*/})"
+    tail -n 8 "$verify_log"
     attempt=$((attempt + 1))
   done
 
@@ -277,11 +330,13 @@ while :; do
     set_status "$ticket" "Blocked"
     write_blocked "$ticket" "$title" "$verify_log" "$attempt_limit"
     log "$ticket blocked after $attempt_limit attempt(s). Stopping."
+    show_progress
     exit 1
   fi
 
   set_status "$ticket" "Done"
   log "$ticket passed and is Done"
+  show_progress
 
   if [ -z "$NO_COMMIT" ] && git rev-parse --git-dir >/dev/null 2>&1; then
     git add -A
