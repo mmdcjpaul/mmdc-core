@@ -1,5 +1,7 @@
 import type { TaskConfig, TaskHandler } from 'payload';
 
+import { createPayloadSearchProjection, type SearchProjectionJob } from '../search/projection.ts';
+
 export type FoundationSearchTask = {
   input: {
     marker?: string;
@@ -53,5 +55,42 @@ export const foundationSearchTask: TaskConfig<FoundationSearchTask> = {
   retries: {
     attempts: 2,
     backoff: { type: 'fixed', delay: 100 }
+  }
+};
+
+export type FoundationSearchProjectionTask = {
+  input: SearchProjectionJob;
+  output: {
+    operation: SearchProjectionJob['operation'];
+    recordId: string;
+    applied: boolean;
+    reason: string;
+  };
+};
+
+export const foundationSearchProjectionTaskHandler: TaskHandler<FoundationSearchProjectionTask> = async ({
+  input,
+  req
+}) => {
+  const result = await createPayloadSearchProjection(req.payload).apply(input);
+  console.log(
+    JSON.stringify({
+      event: 'search.projection',
+      operation: result.operation,
+      recordId: result.recordId,
+      applied: result.applied,
+      reason: result.reason
+    })
+  );
+  return { state: 'succeeded', output: result };
+};
+
+export const foundationSearchProjectionTask: TaskConfig<FoundationSearchProjectionTask> = {
+  slug: 'foundation-search-projection',
+  label: 'Synthetic foundation search projection',
+  handler: foundationSearchProjectionTaskHandler,
+  retries: {
+    attempts: 3,
+    backoff: { type: 'fixed', delay: 250 }
   }
 };

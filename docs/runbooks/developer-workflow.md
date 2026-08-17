@@ -87,10 +87,11 @@ pnpm run build
 pnpm run container:smoke
 ```
 
-The worker and search runtime belong to F04; the production Dockerfile and
-container smoke target belong to F06. Until those tickets land, their commands
-fail with an actionable prerequisite message and do not claim that work has
-been performed. `--help` is available on each deferred command.
+The worker and synthetic search runtime belong to F04; the production Dockerfile
+and container smoke target belong to F06. Search rebuild reads canonical Neon
+records and atomically swaps a validated versioned index. See
+[`search-recovery.md`](search-recovery.md) for index version inspection,
+rebuild, and unavailability recovery.
 
 ## Missing prerequisites and secret safety
 

@@ -69,6 +69,7 @@ export interface Config {
   collections: {
     users: User;
     media: Media;
+    'foundation-search-records': FoundationSearchRecord;
     'payload-kv': PayloadKv;
     'payload-jobs': PayloadJob;
     'payload-locked-documents': PayloadLockedDocument;
@@ -79,6 +80,7 @@ export interface Config {
   collectionsSelect: {
     users: UsersSelect<false> | UsersSelect<true>;
     media: MediaSelect<false> | MediaSelect<true>;
+    'foundation-search-records': FoundationSearchRecordsSelect<false> | FoundationSearchRecordsSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-jobs': PayloadJobsSelect<false> | PayloadJobsSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
@@ -99,6 +101,7 @@ export interface Config {
   jobs: {
     tasks: {
       'foundation-search-probe': TaskFoundationSearchProbe;
+      'foundation-search-projection': TaskFoundationSearchProjection;
       inline: {
         input: unknown;
         output: unknown;
@@ -173,6 +176,17 @@ export interface Media {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "foundation-search-records".
+ */
+export interface FoundationSearchRecord {
+  id: number;
+  canonicalVersion: number;
+  value: string;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-kv".
  */
 export interface PayloadKv {
@@ -240,7 +254,7 @@ export interface PayloadJob {
     | {
         executedAt: string;
         completedAt: string;
-        taskSlug: 'inline' | 'foundation-search-probe';
+        taskSlug: 'inline' | 'foundation-search-probe' | 'foundation-search-projection';
         taskID: string;
         input?:
           | {
@@ -271,13 +285,13 @@ export interface PayloadJob {
           | boolean
           | null;
         parent?: {
-          taskSlug?: ('inline' | 'foundation-search-probe') | null;
+          taskSlug?: ('inline' | 'foundation-search-probe' | 'foundation-search-projection') | null;
           taskID?: string | null;
         };
         id?: string | null;
       }[]
     | null;
-  taskSlug?: ('inline' | 'foundation-search-probe') | null;
+  taskSlug?: ('inline' | 'foundation-search-probe' | 'foundation-search-projection') | null;
   queue?: string | null;
   waitUntil?: string | null;
   processing?: boolean | null;
@@ -302,6 +316,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'media';
         value: number | Media;
+      } | null)
+    | ({
+        relationTo: 'foundation-search-records';
+        value: number | FoundationSearchRecord;
       } | null);
   globalSlug?: string | null;
   user: {
@@ -386,6 +404,16 @@ export interface MediaSelect<T extends boolean = true> {
   height?: T;
   focalX?: T;
   focalY?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "foundation-search-records_select".
+ */
+export interface FoundationSearchRecordsSelect<T extends boolean = true> {
+  canonicalVersion?: T;
+  value?: T;
+  updatedAt?: T;
+  createdAt?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -480,6 +508,14 @@ export interface CollectionsWidget {
  * via the `definition` "TaskFoundation-search-probe".
  */
 export interface TaskFoundationSearchProbe {
+  input?: unknown;
+  output?: unknown;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "TaskFoundation-search-projection".
+ */
+export interface TaskFoundationSearchProjection {
   input?: unknown;
   output?: unknown;
 }

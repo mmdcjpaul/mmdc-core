@@ -17,6 +17,7 @@ const payloadCommandScript = path.join(root, 'scripts', 'payload-command.mjs');
 const payloadMigrationScript = path.join(root, 'scripts', 'payload-migrate.mjs');
 const payloadSeedScript = path.join(root, 'scripts', 'payload-seed.mjs');
 const payloadWorkerScript = path.join(root, 'scripts', 'payload-worker.mjs');
+const searchRebuildScript = path.join(root, 'scripts', 'search-rebuild.mjs');
 
 const usage = () => {
   console.log(`MMDC developer workflow
@@ -330,7 +331,14 @@ try {
       );
       break;
     case 'search:rebuild':
-      status = unavailable('search:rebuild', 'F04-T02 search projection and rebuild runtime');
+      status = runNode(
+        ['--experimental-strip-types', searchRebuildScript, ...actionArguments],
+        loadLocalEnvironment(),
+        {
+          label: 'search rebuild',
+          remediation: 'Run pnpm run setup, apply migrations, and verify the documented local environment.'
+        }
+      );
       break;
     case 'container:smoke':
       if (actionArguments.includes('--help')) {

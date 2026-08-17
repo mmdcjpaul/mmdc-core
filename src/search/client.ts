@@ -7,6 +7,16 @@ import {
   type MeilisearchRuntimeConfig
 } from './key-policy.ts';
 
+export class MeilisearchRequestError extends Error {
+  readonly status: number;
+
+  constructor(status: number) {
+    super(`Meilisearch request failed (${status})`);
+    this.name = 'MeilisearchRequestError';
+    this.status = status;
+  }
+}
+
 export class MeilisearchClient {
   private readonly scope: MeilisearchKeyScope;
   private readonly config: MeilisearchRuntimeConfig;
@@ -21,7 +31,9 @@ export class MeilisearchClient {
     if (!path.startsWith('/')) throw new Error('Meilisearch API paths must start with /');
 
     const headers = new Headers(init.headers);
-    headers.set('X-Meili-API-Key', keyForScope(this.config, this.scope));
+    const key = keyForScope(this.config, this.scope);
+    headers.set('Authorization', `Bearer ${key}`);
+    headers.set('X-Meili-API-Key', key);
     if (init.body && !headers.has('content-type')) headers.set('content-type', 'application/json');
     const response = await fetch(`${this.config.url}${path}`, { ...init, headers });
     const text = await response.text();
@@ -33,9 +45,7 @@ export class MeilisearchClient {
         body = text;
       }
     }
-    if (!response.ok) {
-      throw new Error(`Meilisearch request failed (${response.status})`);
-    }
+    if (!response.ok) throw new MeilisearchRequestError(response.status);
     return body as T;
   }
 

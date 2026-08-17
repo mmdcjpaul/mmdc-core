@@ -1,6 +1,15 @@
 export type MeilisearchKeyScope = 'master' | 'admin/indexing' | 'search-only';
 
-export type MeilisearchOperation = 'health' | 'search' | 'index-read' | 'index-write' | 'index-settings' | 'key-admin';
+export type MeilisearchOperation =
+  | 'health'
+  | 'search'
+  | 'index-read'
+  | 'index-write'
+  | 'index-delete'
+  | 'index-swap'
+  | 'task-read'
+  | 'index-settings'
+  | 'key-admin';
 
 export type MeilisearchRuntimeConfig = {
   url: string;
@@ -12,7 +21,15 @@ export type MeilisearchRuntimeConfig = {
 
 const operationsByScope: Record<MeilisearchKeyScope, readonly MeilisearchOperation[]> = {
   master: ['health', 'search', 'index-read', 'index-write', 'index-settings', 'key-admin'],
-  'admin/indexing': ['health', 'index-read', 'index-write', 'index-settings'],
+  'admin/indexing': [
+    'health',
+    'index-read',
+    'index-write',
+    'index-delete',
+    'index-swap',
+    'task-read',
+    'index-settings'
+  ],
   'search-only': ['health', 'search']
 };
 

@@ -7,9 +7,10 @@ import { buildConfig } from 'payload';
 import sharp from 'sharp';
 
 import { Media } from './src/collections/Media.ts';
+import { FoundationSearchRecords } from './src/collections/FoundationSearchRecords.ts';
 import { Users } from './src/collections/Users.ts';
 import { loadEnvironment } from './src/environment.ts';
-import { foundationSearchTask } from './src/jobs/foundation-search-task.ts';
+import { foundationSearchProjectionTask, foundationSearchTask } from './src/jobs/foundation-search-task.ts';
 import { assertLocalDatabaseTarget } from './src/operations/local-services.ts';
 
 const filename = fileURLToPath(import.meta.url);
@@ -46,14 +47,14 @@ export default buildConfig({
       baseDir: dirname
     }
   },
-  collections: [Users, Media],
+  collections: [Users, Media, FoundationSearchRecords],
   jobs: {
     addParentToTaskLog: true,
     deleteJobOnComplete: false,
     depth: 0,
     enableConcurrencyControl: true,
     processingOrder: 'createdAt',
-    tasks: [foundationSearchTask]
+    tasks: [foundationSearchTask, foundationSearchProjectionTask]
   },
   db: database,
   endpoints: [

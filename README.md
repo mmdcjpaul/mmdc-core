@@ -44,7 +44,9 @@ The complete command contract is:
 `worker`, `search:rebuild`, and `container:smoke` are stable entry points. The
 worker is a separate Payload jobs process with bounded polling and lease
 recovery. Search credentials are server-only: master, admin/indexing, and
-search-only keys are distinct and none are prefixed with `NEXT_PUBLIC_`.
+search-only keys are distinct and none are prefixed with `NEXT_PUBLIC_`. The
+synthetic projection, versioned rebuild, atomic swap, and sanitized unavailable
+state are documented in [`docs/runbooks/search-recovery.md`](docs/runbooks/search-recovery.md).
 
 Shared Compose keeps Meilisearch on an internal network in production mode and
 runs web and worker from the same `MMDC_APPLICATION_IMAGE` with distinct

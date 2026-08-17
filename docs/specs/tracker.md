@@ -4,7 +4,7 @@ plan_version: 0.1
 last_updated: 2026-08-17
 status_values: Not started | In progress | Done | Blocked
 progress_total: 25
-progress_done: 9
+progress_done: 10
 progress_blocked: 0
 ---
 
@@ -23,7 +23,7 @@ The first eligible `Not started` row is the next ticket. `loop.sh` resumes an `I
 | F03-T01 | Local development | Provide isolated local services and database-target guards | Done | F02-T02 | docs/specs/F03-T01-local-services/SPEC.md |
 | F03-T02 | Local development | Provide the repeatable developer command contract | Done | F03-T01 | docs/specs/F03-T02-developer-workflow/SPEC.md |
 | F04-T01 | Search and worker | Establish Meilisearch key boundaries and the worker process | Done | F03-T02 | docs/specs/F04-T01-search-worker-runtime/SPEC.md |
-| F04-T02 | Search and worker | Implement idempotent projection, rebuild, and failure behavior | Not started | F04-T01 | docs/specs/F04-T02-search-projection/SPEC.md |
+| F04-T02 | Search and worker | Implement idempotent projection, rebuild, and failure behavior | Done | F04-T01 | docs/specs/F04-T02-search-projection/SPEC.md |
 | F05-T01 | Media storage | Provision private S3 storage and integrate the Payload adapter | Not started | F02-T01,F00-T02 | docs/specs/F05-T01-s3-storage/SPEC.md |
 | F05-T02 | Media storage | Enforce governed media validation, delivery, and recovery | Not started | F05-T01 | docs/specs/F05-T02-media-governance/SPEC.md |
 | F06-T01 | Production runtime | Build the hardened immutable application image | Not started | F04-T02,F05-T02 | docs/specs/F06-T01-production-image/SPEC.md |
