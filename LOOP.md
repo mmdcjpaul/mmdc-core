@@ -11,11 +11,17 @@ resume the In progress ticket, otherwise take the first Not started ticket
   -> ask Codex to implement only that ticket
   -> ./validation.sh <ticket>
        exit 0: set Done, commit, continue
-       nonzero: repair, up to MAX_ATTEMPTS total
+       nonzero: repair autonomous work, up to MAX_ATTEMPTS total
+       guarded nonzero: stop after GUARDED_MAX_ATTEMPTS total
        still nonzero: set Blocked, append BLOCKED.md, stop nonzero
 ```
 
 Bash owns selection, retry counting, status transitions, validation, committing, and halting. Codex owns implementation and the task-specific acceptance script. The acceptance script must implement the spec's entire validation contract; changing it to evade a requirement is a failure.
+
+Ticket autonomy comes from the spec frontmatter. `autonomous` tickets use the
+full repair budget. `guarded` tickets still perform all safe repository work,
+but default to one attempt so a missing human decision, credential, or external
+approval does not spend repeated model runs on an impossible repair.
 
 The loop never skips a failed ticket. An interrupted run resumes its single `In progress` row.
 
@@ -55,6 +61,7 @@ The loop uses `codex exec --model <model-id> --config model_reasoning_effort="<r
 | `LOOP_REASONING_EFFORT` | model default | Reasoning effort when no second argument is supplied |
 | `CODEX_BIN` | `codex` | Codex executable path/name |
 | `MAX_ATTEMPTS` | `3` | Total implementation/repair attempts per ticket |
+| `GUARDED_MAX_ATTEMPTS` | `1` | Maximum attempts for a guarded ticket; capped by `MAX_ATTEMPTS` |
 | `MAX_TICKETS` | `0` | Stop after N passing tickets; `0` means no limit |
 | `NO_COMMIT` | unset | Set to `1` to skip one commit per passing ticket |
 | `ALLOW_DIRTY` | unset | Set to `1` to explicitly allow a dirty baseline |
