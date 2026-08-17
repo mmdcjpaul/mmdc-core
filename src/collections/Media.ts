@@ -1,8 +1,17 @@
 import path from 'node:path';
 
-import type { CollectionConfig } from 'payload';
+import type { CollectionBeforeValidateHook, CollectionConfig } from 'payload';
+
+import { ensureMediaRecordPrefix } from '../media-storage.ts';
 
 const authenticated = ({ req }: { req: { user?: unknown } }): boolean => Boolean(req.user);
+
+const ensureStoragePrefix: CollectionBeforeValidateHook = ({ data, operation, originalDoc }) =>
+  ensureMediaRecordPrefix({
+    data: data as Record<string, unknown>,
+    operation,
+    originalDoc: originalDoc as Record<string, unknown> | null | undefined
+  });
 
 export const Media: CollectionConfig = {
   slug: 'media',
@@ -15,6 +24,9 @@ export const Media: CollectionConfig = {
     read: authenticated,
     update: authenticated
   },
+  hooks: {
+    beforeValidate: [ensureStoragePrefix]
+  },
   fields: [
     {
       name: 'alt',
@@ -24,6 +36,14 @@ export const Media: CollectionConfig = {
     {
       name: 'caption',
       type: 'textarea'
+    },
+    {
+      name: 'prefix',
+      type: 'text',
+      admin: {
+        hidden: true,
+        readOnly: true
+      }
     }
   ],
   upload: {

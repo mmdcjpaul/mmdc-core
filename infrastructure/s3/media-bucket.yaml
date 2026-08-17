@@ -1,0 +1,98 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Private, versioned MMDC media bucket and prefix-scoped application policy.
+
+Parameters:
+  ProjectName:
+    Type: String
+    Default: mmdc-v3
+    AllowedPattern: '^[a-z0-9-]+$'
+  Environment:
+    Type: String
+    AllowedValues: [development, staging, production]
+  ApplicationRoleName:
+    Type: String
+    Description: Existing workload role that receives only the media object policy.
+    AllowedPattern: '^[A-Za-z0-9+=,.@_-]+$'
+  MediaPrefix:
+    Type: String
+    Default: media
+    AllowedPattern: '^[a-z0-9][a-z0-9-]{0,31}$'
+
+Resources:
+  MediaBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BucketName: !Sub '${ProjectName}-${Environment}-media'
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      LifecycleConfiguration:
+        Rules:
+          - Id: AbortIncompleteMultipartUploads
+            Status: Enabled
+            AbortIncompleteMultipartUpload:
+              DaysAfterInitiation: 7
+          - Id: ExpireNoncurrentVersions
+            Status: Enabled
+            NoncurrentVersionExpiration:
+              NoncurrentDays: 30
+      VersioningConfiguration:
+        Status: Enabled
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      Tags:
+        - Key: Project
+          Value: mmdc-v3
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: cloudformation
+
+  MediaBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref MediaBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: DenyInsecureTransport
+            Effect: Deny
+            Principal: '*'
+            Action: s3:*
+            Resource:
+              - !GetAtt MediaBucket.Arn
+              - !Sub '${MediaBucket.Arn}/*'
+            Condition:
+              Bool:
+                aws:SecureTransport: 'false'
+
+  MediaApplicationPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: !Sub '${ProjectName}-${Environment}-media-objects'
+      Roles:
+        - !Ref ApplicationRoleName
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: MediaObjectOperationsOnly
+            Effect: Allow
+            Action:
+              - s3:AbortMultipartUpload
+              - s3:DeleteObject
+              - s3:GetObject
+              - s3:ListMultipartUploadParts
+              - s3:PutObject
+            Resource: !Sub '${MediaBucket.Arn}/${MediaPrefix}/*'
+
+Outputs:
+  MediaBucketName:
+    Value: !Ref MediaBucket
+  MediaObjectPrefix:
+    Value: !Sub '${MediaPrefix}/'

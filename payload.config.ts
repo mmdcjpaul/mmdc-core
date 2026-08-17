@@ -3,6 +3,7 @@ import { fileURLToPath } from 'node:url';
 
 import { postgresAdapter } from '@payloadcms/db-postgres';
 import { sqliteAdapter } from '@payloadcms/db-sqlite';
+import { s3Storage } from '@payloadcms/storage-s3';
 import { buildConfig } from 'payload';
 import sharp from 'sharp';
 
@@ -40,6 +41,35 @@ const database = environment.internal.compatibilityDatabaseURL
       push: false
     });
 
+const s3Credentials =
+  process.env.S3_ACCESS_KEY_ID && process.env.S3_SECRET_ACCESS_KEY
+    ? {
+        accessKeyId: process.env.S3_ACCESS_KEY_ID,
+        secretAccessKey: process.env.S3_SECRET_ACCESS_KEY
+      }
+    : undefined;
+
+const mediaStoragePlugin =
+  environment.mediaStorage === 's3'
+    ? s3Storage({
+        alwaysInsertFields: true,
+        bucket: environment.media.bucket ?? 'mmdc-build-only-media',
+        collections: {
+          media: {
+            prefix: 'media'
+          }
+        },
+        config: {
+          ...(s3Credentials ? { credentials: s3Credentials } : {}),
+          ...(environment.media.endpoint ? { endpoint: environment.media.endpoint } : {}),
+          forcePathStyle: environment.media.forcePathStyle,
+          region: environment.media.region ?? 'mmdc-build-only-region'
+        },
+        enabled: environment.phase === 'runtime',
+        useCompositePrefixes: true
+      })
+    : undefined;
+
 export default buildConfig({
   admin: {
     user: Users.slug,
@@ -56,6 +86,7 @@ export default buildConfig({
     processingOrder: 'createdAt',
     tasks: [foundationSearchTask, foundationSearchProjectionTask]
   },
+  plugins: mediaStoragePlugin ? [mediaStoragePlugin] : [],
   db: database,
   endpoints: [
     {

@@ -5,7 +5,13 @@ export type EnvironmentSnapshot = {
   phase: EnvironmentPhase;
   environmentName: string;
   databaseMode: DatabaseMode;
-  mediaStorage: 'local';
+  mediaStorage: 'local' | 's3';
+  media: {
+    bucket: string | undefined;
+    region: string | undefined;
+    endpoint: string | undefined;
+    forcePathStyle: boolean;
+  };
   required: {
     payloadSecret: string | undefined;
   };
@@ -45,6 +51,11 @@ const nonEmpty = (value: string | undefined): string | undefined => {
   return trimmed ? trimmed : undefined;
 };
 
+const mediaBucketHasEnvironment = (bucket: string, environmentName: string): boolean => {
+  const escapedEnvironment = environmentName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return new RegExp(`(^|-)${escapedEnvironment}(-|$)`).test(bucket);
+};
+
 const boundedInteger = (value: string | undefined, fallback: number, minimum: number, maximum: number): number => {
   if (!value?.trim()) return fallback;
 
@@ -73,12 +84,23 @@ export const loadEnvironment = (
   const environmentName = nonEmpty(env.MMDC_ENVIRONMENT)?.toLowerCase() ?? 'local';
   const requestedDatabaseMode = nonEmpty(env.MMDC_DATABASE_MODE)?.toLowerCase() ?? 'postgres';
   const databaseMode: DatabaseMode = requestedDatabaseMode === 'neon' ? 'neon' : 'postgres';
-  const mediaStorage = 'local' as const;
+  const requestedMediaStorage = nonEmpty(env.MMDC_MEDIA_STORAGE)?.toLowerCase() ?? 'local';
+  const mediaStorage = requestedMediaStorage === 's3' ? ('s3' as const) : ('local' as const);
+  const mediaBucket = nonEmpty(env.MMDC_MEDIA_BUCKET) ?? nonEmpty(env.S3_BUCKET);
+  const mediaRegion = nonEmpty(env.MMDC_MEDIA_REGION) ?? nonEmpty(env.S3_REGION);
+  const mediaEndpoint = nonEmpty(env.MMDC_MEDIA_ENDPOINT) ?? nonEmpty(env.S3_ENDPOINT);
+  const mediaForcePathStyle = (nonEmpty(env.MMDC_MEDIA_FORCE_PATH_STYLE) ?? nonEmpty(env.S3_FORCE_PATH_STYLE)) === '1';
   const snapshot: EnvironmentSnapshot = {
     phase,
     environmentName,
     databaseMode,
     mediaStorage,
+    media: {
+      bucket: mediaBucket,
+      region: mediaRegion,
+      endpoint: mediaEndpoint,
+      forcePathStyle: mediaForcePathStyle
+    },
     required: {
       payloadSecret: nonEmpty(env.PAYLOAD_SECRET)
     },
@@ -107,6 +129,12 @@ export const loadEnvironment = (
       environmentName,
       databaseMode,
       mediaStorage,
+      media: {
+        bucket: mediaBucket ?? 'mmdc-build-only-media',
+        region: mediaRegion ?? 'mmdc-build-only-region',
+        endpoint: mediaEndpoint,
+        forcePathStyle: mediaForcePathStyle
+      },
       required: {
         payloadSecret: snapshot.required.payloadSecret ?? buildSecret
       },
@@ -123,7 +151,20 @@ export const loadEnvironment = (
   if (!['postgres', 'neon'].includes(requestedDatabaseMode)) {
     issues.push('MMDC_DATABASE_MODE must use postgres or neon');
   }
-  if (environmentName === 'local' && nonEmpty(env.MMDC_MEDIA_STORAGE) && env.MMDC_MEDIA_STORAGE !== 'local') {
+  if (!['local', 's3'].includes(requestedMediaStorage)) {
+    issues.push('MMDC_MEDIA_STORAGE must use local or s3');
+  }
+  if (['development', 'staging', 'production'].includes(environmentName) && requestedMediaStorage !== 's3') {
+    issues.push('hosted media storage must use MMDC_MEDIA_STORAGE=s3');
+  }
+  if (requestedMediaStorage === 's3') {
+    if (!mediaBucket) issues.push('MMDC_MEDIA_BUCKET or S3_BUCKET');
+    else if (!mediaBucketHasEnvironment(mediaBucket, environmentName)) {
+      issues.push('media bucket must be dedicated to MMDC_ENVIRONMENT');
+    }
+    if (!mediaRegion) issues.push('MMDC_MEDIA_REGION or S3_REGION');
+  }
+  if (environmentName === 'local' && nonEmpty(env.MMDC_MEDIA_STORAGE) && requestedMediaStorage !== 'local') {
     issues.push('local media storage must use MMDC_MEDIA_STORAGE=local');
   }
   if (!snapshot.required.payloadSecret) issues.push('PAYLOAD_SECRET');
