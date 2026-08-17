@@ -102,7 +102,7 @@ done
   require_text "$HOST" 'revokes the old credential' 'old-credential revocation'
   require_text "$HOST" 'Long-lived administrator or account-root credentials were rejected' 'rejected broad credential alternative'
   require_text "$HOST" 'GitHub Actions inbound SSH was rejected' 'rejected inbound SSH alternative'
-  require_regex "$HOST" 'No credential,[[:space:]]+account,[[:space:]]+hostname,[[:space:]]+region,[[:space:]]+authentication approval,[[:space:]]+or cloud access is claimed\.' 'anti-fabrication boundary'
+  require_regex "$HOST" 'No AWS account access,[[:space:]]+hostname allocation,[[:space:]]+region change,[[:space:]]+secret value,[[:space:]]+or[[:space:]]+existing cloud resource is claimed\.' 'anti-fabrication boundary'
 
 # R03/R04: durable decisions must carry the complete decision metadata, and
 # this implementation must not turn missing authority into an accepted claim.

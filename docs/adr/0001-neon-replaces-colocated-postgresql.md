@@ -1,11 +1,11 @@
 ---
-status: Proposed
+status: Accepted
 decision: Neon PostgreSQL replaces colocated shared-environment PostgreSQL
 owners:
   - Engineering and Product (role-level owner named by MMDC-WEB-PLAN-001)
-approval_state: Blocked
-approver: Not recorded
-approved_at: Not recorded
+approval_state: Accepted
+approver: Jan Paul Fernandez
+approved_at: 2026-08-17T08:16:31Z
 ---
 
 # ADR-0001 — Neon replaces colocated PostgreSQL
@@ -23,8 +23,8 @@ unanswered Phase 0 decisions have been approved.
 ### Owner
 
 Engineering and Product own the decision at the role level, as named by
-MMDC-WEB-PLAN-001. A named accountable approver has not been supplied in the
-repository.
+MMDC-WEB-PLAN-001. Jan Paul Fernandez is the accountable approver for this
+development architecture decision.
 
 ### Rationale
 
@@ -33,6 +33,12 @@ recovery, branching, and managed PostgreSQL operations have an explicit
 provider boundary. Local development may use a dedicated Neon developer branch
 or the pinned local PostgreSQL compatibility service. The Payload PostgreSQL
 adapter remains the standard `@payloadcms/db-postgres` adapter.
+
+Development starts on the existing Neon Free account. The supplied connection
+details will select a dedicated non-production project/branch at runtime; the
+connection strings and embedded credentials are secrets and are never recorded
+in this ADR or committed to Git. A paid plan and its recovery objectives remain
+a separate production decision.
 
 ### Alternatives considered
 
@@ -67,8 +73,13 @@ The connection contract is:
 
 The backup and restore boundary is:
 
-- Each persistent environment has an explicitly approved restore window; a
-  provider default is not sufficient.
+- Neon Free is accepted for development without claiming a guaranteed restore
+  window beyond the capabilities actually available to that account. Before a
+  material or irreversible development migration, the operator takes a logical
+  backup through `DATABASE_DIRECT_URL`; provider restore history may supplement
+  but does not replace that backup.
+- Each later persistent staging or production environment must have an
+  explicitly approved restore window; a provider default is not sufficient.
 - Material or irreversible changes require a pre-migration Neon restore point
   when supported and a logical backup through `DATABASE_DIRECT_URL`.
 - A restore is first performed into a temporary isolated branch/environment,
@@ -80,9 +91,11 @@ The backup and restore boundary is:
 
 ### Approval state
 
-Blocked pending accountable human confirmation of the Neon plan, restore window,
-environment allocation, and the durable architecture decision. No approval,
-plan, restore window, or environment selection is inferred from this ADR.
+Accepted by Jan Paul Fernandez at 2026-08-17T08:16:31Z: use the existing Neon
+Free account for a dedicated non-production development database, accept its
+available recovery capabilities, and require logical backups before risky
+migrations. The connection strings are runtime secrets and are not approval
+evidence.
 
 ## Implementation boundaries
 
@@ -95,6 +108,5 @@ shared environment, creating backups, or performing a restore.
 
 Acceptance must verify the canonical ownership, pooled/direct connection
 boundaries, backup/restore isolation, retention, and absence of contradictory
-colocated-database claims. Acceptance also requires an authentic approval record
-with a named approver and timestamp; this record intentionally does not provide
-one.
+colocated-database claims. The approval record must retain the named approver
+and timestamp above.
