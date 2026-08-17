@@ -41,9 +41,14 @@ The complete command contract is:
 | Tests and quality     | `pnpm run test`, `pnpm run typecheck`, `pnpm run lint`, `pnpm run build` |
 | Container smoke       | `pnpm run container:smoke`                                               |
 
-`worker`, `search:rebuild`, and `container:smoke` are stable entry points. They
-report the owning prerequisite when F04/F06 has not supplied its runtime; no
-placeholder worker, search index, or container evidence is claimed by F03-T02.
+`worker`, `search:rebuild`, and `container:smoke` are stable entry points. The
+worker is a separate Payload jobs process with bounded polling and lease
+recovery. Search credentials are server-only: master, admin/indexing, and
+search-only keys are distinct and none are prefixed with `NEXT_PUBLIC_`.
+
+Shared Compose keeps Meilisearch on an internal network in production mode and
+runs web and worker from the same `MMDC_APPLICATION_IMAGE` with distinct
+commands. The local Compose service remains loopback-only for development.
 
 See [`docs/runbooks/developer-workflow.md`](docs/runbooks/developer-workflow.md)
 for workstation prerequisites, local PostgreSQL and isolated Neon choices,

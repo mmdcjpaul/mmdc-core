@@ -16,6 +16,7 @@ const localServiceScript = path.join(root, 'scripts', 'local-services.mjs');
 const payloadCommandScript = path.join(root, 'scripts', 'payload-command.mjs');
 const payloadMigrationScript = path.join(root, 'scripts', 'payload-migrate.mjs');
 const payloadSeedScript = path.join(root, 'scripts', 'payload-seed.mjs');
+const payloadWorkerScript = path.join(root, 'scripts', 'payload-worker.mjs');
 
 const usage = () => {
   console.log(`MMDC developer workflow
@@ -319,7 +320,14 @@ try {
       status = await stop();
       break;
     case 'worker':
-      status = unavailable('worker', 'F04-T01 worker runtime');
+      status = runNode(
+        ['--experimental-strip-types', payloadWorkerScript, ...actionArguments],
+        loadLocalEnvironment(),
+        {
+          label: 'worker',
+          remediation: 'Run pnpm run setup and verify the documented local environment.'
+        }
+      );
       break;
     case 'search:rebuild':
       status = unavailable('search:rebuild', 'F04-T02 search projection and rebuild runtime');

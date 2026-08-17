@@ -1,0 +1,36 @@
+name: mmdc-shared
+
+services:
+  meilisearch:
+    image: getmeili/meilisearch:v1.51.0
+    environment:
+      MEILI_ENV: production
+      MEILI_MASTER_KEY: ${MEILISEARCH_MASTER_KEY:?MEILISEARCH_MASTER_KEY is required}
+      MEILI_NO_ANALYTICS: 'true'
+    volumes:
+      - mmdc-shared-meilisearch-data:/meili_data
+    restart: unless-stopped
+    networks: [mmdc-internal]
+
+  web:
+    image: ${MMDC_APPLICATION_IMAGE:?MMDC_APPLICATION_IMAGE must be an immutable application image}
+    command: ['pnpm', 'run', 'start']
+    env_file: [.env]
+    depends_on: [meilisearch]
+    restart: unless-stopped
+    networks: [mmdc-internal]
+
+  worker:
+    image: ${MMDC_APPLICATION_IMAGE:?MMDC_APPLICATION_IMAGE must be an immutable application image}
+    command: ['pnpm', 'run', 'worker']
+    env_file: [.env]
+    depends_on: [meilisearch]
+    restart: unless-stopped
+    networks: [mmdc-internal]
+
+volumes:
+  mmdc-shared-meilisearch-data:
+
+networks:
+  mmdc-internal:
+    internal: true
