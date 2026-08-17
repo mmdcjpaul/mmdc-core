@@ -5,9 +5,9 @@ Compose file provides only the local Meilisearch service and, when selected,
 the PostgreSQL 17 compatibility service:
 
 ```bash
-cp .env.example .env.local
-node scripts/local-services.mjs validate
-node scripts/local-services.mjs up
+pnpm run setup
+pnpm run start
+pnpm run health
 ```
 
 The default database mode is `postgres`. It targets the loopback-only Compose
@@ -37,4 +37,8 @@ node scripts/local-services.mjs config
 
 Local media uses the repository `media/` directory and synthetic fixtures. No
 AWS credentials, S3 bucket, or shared-environment data is needed for this mode.
-Stop services with `node scripts/local-services.mjs down`.
+Stop the application and local services with `pnpm run stop`.
+
+The lower-level service wrapper remains available for inspecting the rendered
+configuration with `node scripts/local-services.mjs config`; it is not a
+replacement for the documented package command contract.
