@@ -1,6 +1,11 @@
 export type EnvironmentPhase = 'build' | 'runtime';
+export type DatabaseMode = 'postgres' | 'neon';
 
 export type EnvironmentSnapshot = {
+  phase: EnvironmentPhase;
+  environmentName: string;
+  databaseMode: DatabaseMode;
+  mediaStorage: 'local';
   required: {
     payloadSecret: string | undefined;
   };
@@ -33,6 +38,7 @@ const buildDatabaseURL = 'postgresql://127.0.0.1:1/mmdc-build-only';
 const defaultDatabasePoolMax = 10;
 const defaultDatabaseConnectionTimeoutMs = 5_000;
 const defaultDatabaseIdleTimeoutMs = 30_000;
+const supportedEnvironments = new Set(['local', 'ci', 'development', 'staging', 'production']);
 
 const nonEmpty = (value: string | undefined): string | undefined => {
   const trimmed = value?.trim();
@@ -64,7 +70,15 @@ export const loadEnvironment = (
     ? 'build'
     : 'runtime'
 ): EnvironmentSnapshot => {
+  const environmentName = nonEmpty(env.MMDC_ENVIRONMENT)?.toLowerCase() ?? 'local';
+  const requestedDatabaseMode = nonEmpty(env.MMDC_DATABASE_MODE)?.toLowerCase() ?? 'postgres';
+  const databaseMode: DatabaseMode = requestedDatabaseMode === 'neon' ? 'neon' : 'postgres';
+  const mediaStorage = 'local' as const;
   const snapshot: EnvironmentSnapshot = {
+    phase,
+    environmentName,
+    databaseMode,
+    mediaStorage,
     required: {
       payloadSecret: nonEmpty(env.PAYLOAD_SECRET)
     },
@@ -89,6 +103,10 @@ export const loadEnvironment = (
 
   if (phase === 'build') {
     return {
+      phase,
+      environmentName,
+      databaseMode,
+      mediaStorage,
       required: {
         payloadSecret: snapshot.required.payloadSecret ?? buildSecret
       },
@@ -101,6 +119,13 @@ export const loadEnvironment = (
   }
 
   const issues: string[] = [];
+  if (!supportedEnvironments.has(environmentName)) issues.push('MMDC_ENVIRONMENT is unknown');
+  if (!['postgres', 'neon'].includes(requestedDatabaseMode)) {
+    issues.push('MMDC_DATABASE_MODE must use postgres or neon');
+  }
+  if (environmentName === 'local' && nonEmpty(env.MMDC_MEDIA_STORAGE) && env.MMDC_MEDIA_STORAGE !== 'local') {
+    issues.push('local media storage must use MMDC_MEDIA_STORAGE=local');
+  }
   if (!snapshot.required.payloadSecret) issues.push('PAYLOAD_SECRET');
   if (!snapshot.internal.databaseURL) issues.push('DATABASE_URL');
   if (!isURLWithProtocol(snapshot.internal.databaseURL, ['postgres:', 'postgresql:'])) {

@@ -4,7 +4,7 @@ plan_version: 0.1
 last_updated: 2026-08-17
 status_values: Not started | In progress | Done | Blocked
 progress_total: 25
-progress_done: 6
+progress_done: 7
 progress_blocked: 0
 ---
 
@@ -20,7 +20,7 @@ The first eligible `Not started` row is the next ticket. `loop.sh` resumes an `I
 | F01-T02 | Reproducible scaffold | Integrate Payload, environment validation, and quality commands | Done | F01-T01 | docs/specs/F01-T02-payload-tooling/SPEC.md |
 | F02-T01 | Payload and Neon | Configure Payload data model, migrations, and generated types | Done | F01-T02 | docs/specs/F02-T01-payload-data-foundation/SPEC.md |
 | F02-T02 | Payload and Neon | Implement bootstrap, seed guards, Neon contracts, and recovery | Done | F02-T01,F00-T02 | docs/specs/F02-T02-neon-operations/SPEC.md |
-| F03-T01 | Local development | Provide isolated local services and database-target guards | Not started | F02-T02 | docs/specs/F03-T01-local-services/SPEC.md |
+| F03-T01 | Local development | Provide isolated local services and database-target guards | Done | F02-T02 | docs/specs/F03-T01-local-services/SPEC.md |
 | F03-T02 | Local development | Provide the repeatable developer command contract | Not started | F03-T01 | docs/specs/F03-T02-developer-workflow/SPEC.md |
 | F04-T01 | Search and worker | Establish Meilisearch key boundaries and the worker process | Not started | F03-T02 | docs/specs/F04-T01-search-worker-runtime/SPEC.md |
 | F04-T02 | Search and worker | Implement idempotent projection, rebuild, and failure behavior | Not started | F04-T01 | docs/specs/F04-T02-search-projection/SPEC.md |

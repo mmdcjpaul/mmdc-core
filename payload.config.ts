@@ -9,10 +9,18 @@ import sharp from 'sharp';
 import { Media } from './src/collections/Media.ts';
 import { Users } from './src/collections/Users.ts';
 import { loadEnvironment } from './src/environment.ts';
+import { assertLocalDatabaseTarget } from './src/operations/local-services.ts';
 
 const filename = fileURLToPath(import.meta.url);
 const dirname = path.dirname(filename);
 const environment = loadEnvironment();
+if (
+  environment.phase === 'runtime' &&
+  ['local', 'ci'].includes(environment.environmentName) &&
+  !environment.internal.compatibilityDatabaseURL
+) {
+  assertLocalDatabaseTarget();
+}
 const database = environment.internal.compatibilityDatabaseURL
   ? sqliteAdapter({
       client: {

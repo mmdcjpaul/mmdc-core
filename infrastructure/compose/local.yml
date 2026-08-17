@@ -1,0 +1,30 @@
+name: mmdc-local
+
+services:
+  meilisearch:
+    image: getmeili/meilisearch:v1.51.0
+    environment:
+      MEILI_ENV: development
+      MEILI_NO_ANALYTICS: 'true'
+    ports:
+      - '${MMDC_LOCAL_SERVICE_BIND_ADDRESS:-127.0.0.1}:7700:7700'
+    volumes:
+      - mmdc-local-meilisearch-data:/meili_data
+    restart: unless-stopped
+
+  postgres:
+    profiles: [postgres]
+    image: postgres:17
+    environment:
+      POSTGRES_DB: mmdc_local
+      POSTGRES_HOST_AUTH_METHOD: trust
+      POSTGRES_USER: mmdc
+    ports:
+      - '${MMDC_LOCAL_SERVICE_BIND_ADDRESS:-127.0.0.1}:5432:5432'
+    volumes:
+      - mmdc-local-postgres-data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+volumes:
+  mmdc-local-meilisearch-data:
+  mmdc-local-postgres-data:

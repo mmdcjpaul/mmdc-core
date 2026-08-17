@@ -4,6 +4,7 @@ import { randomBytes } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 
 import { assertSeedRequestAllowed, syntheticFixtureName } from '../src/operations/seed-guard.ts';
+import { assertDestructiveDatabaseTarget, assertLocalDatabaseTarget } from '../src/operations/local-services.ts';
 
 const action = process.argv[2] === '--reset' ? 'reset' : 'seed';
 const environment = (process.env.MMDC_ENVIRONMENT ?? 'local').trim().toLowerCase();
@@ -27,6 +28,12 @@ assertSeedRequestAllowed({
   breakGlass,
   now: new Date()
 });
+
+if (environment === 'local' || environment === 'ci') {
+  const target = assertLocalDatabaseTarget();
+  console.log(`Destructive target: ${target.displayName}`);
+  assertDestructiveDatabaseTarget(target, process.env.MMDC_DATABASE_TARGET_CONFIRMATION);
+}
 
 const { getPayload } = await import('payload');
 const { default: config } = await import('../payload.config.ts');

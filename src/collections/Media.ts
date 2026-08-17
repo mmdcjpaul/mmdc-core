@@ -29,7 +29,7 @@ export const Media: CollectionConfig = {
   upload: {
     adminThumbnail: 'thumbnail',
     mimeTypes: ['image/*', 'application/pdf'],
-    staticDir: path.resolve(process.cwd(), 'media')
+    staticDir: path.resolve(process.env.MMDC_MEDIA_DIR?.trim() || path.join(process.cwd(), 'media'))
   },
   timestamps: true
 };
