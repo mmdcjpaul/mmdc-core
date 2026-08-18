@@ -255,3 +255,25 @@ printed non-secret claims only and was deleted afterwards.
 | Execution             | `mmdc-v3-development` reached `UPDATE_COMPLETE` at `2026-08-18T14:25:12Z`; only the deploy role changed                                                                                  |
 | Probe hygiene         | The claim probe printed selected claims only and never the raw token; its branch and workflow were deleted after measurement                                                             |
 | Boundary              | No ECR publication, S3 desired-state write, host reconciliation, Neon mutation, service start, or tag creation/modification occurred                                                     |
+
+## mmdc-core namespace separation and first successful publication — 2026-08-18
+
+mmdc-core was running on mmdc-v3's development infrastructure. mmdc-v3
+(`mmdc-tech/mmdc-v3`) had already published `v0.1.0-dev.1` through `.8` to the
+shared ECR repository, so every mmdc-core release tag collided with an existing
+immutable tag. This was the real blocker behind the `dev.1`/`dev.2`/`dev.3`
+failures; the OIDC defects masked it.
+
+| Check             | Sanitized result                                                                                                                                                                                                   |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Shared resources  | CFN stack, ECR repository, deployment bucket, and deploy role were all `mmdc-v3-development`; the two projects also shared one `desired.json` key                                                                  |
+| Separation shape  | Additive `mmdc-core-development` ECR repository, deployment bucket, and publisher role; no rename or replacement, since renaming derives from `ProjectName` and would replace the buckets and both Lightsail hosts |
+| Host access       | Granted through the ECR repository policy and S3 bucket policy; the storage user's inline policy is capped at 2048 bytes aggregate and overflowed when the grants were added inline                                |
+| IAM prerequisite  | The CloudFormation execution role is pinned to exact ARNs and was widened to the three new ones using the separately governed root path                                                                            |
+| Rollback recovery | A first attempt rolled back on the inline-policy limit and retained the new ECR repository and bucket; both were empty, were removed, and the stack was re-applied cleanly                                         |
+| Publisher actions | `ecr:BatchGetImage` and `ecr:GetDownloadUrlForLayer` were missing, so buildx pushed layers but was denied the manifest write; the proven mmdc-v3 action set was adopted                                            |
+| Successful run    | `v0.1.0-dev.5` published every step green: OIDC, ECR authentication, tag-reuse guard, build, digest resolution, semantic tag mapping, and desired-state publication                                                |
+| Published image   | `mmdc-core-development` tags `v0.1.0-dev.5` and `b951a5ae66352934fea04629696260ff8bdf1842`, digest `sha256:994a4ed0d94e679199bb2e2f7eff2c609b38865ec22bf699d82982efa7378267`                                       |
+| Published state   | `desired.json` written to `mmdc-core-development-deployments-349762920349-ap-southeast-1` at `2026-08-18T15:47:58Z`                                                                                                |
+| Remaining work    | The host pull agent on `mmdc-v3-development-app-02` still points at the mmdc-v3 bucket/repository and remains in `readiness-only` mode; no host reconciliation has occurred                                        |
+| Boundary          | No host change, Neon mutation, service start, or F10 work occurred                                                                                                                                                 |
