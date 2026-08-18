@@ -95,7 +95,11 @@ if (mode === 'selection-local') {
   );
   await payload.create({
     collection: 'media',
-    data: { alt: 'F05-T01 local filesystem probe' },
+    data: {
+      alt: 'F05-T01 local filesystem probe',
+      rightsStatus: 'owned',
+      rightsHolder: 'MMDC foundation probe'
+    },
     file: { data: png, mimetype: 'image/png', name: 'local-foundation.png', size: png.length },
     overrideAccess: true,
     overwriteExistingFiles: true
@@ -158,7 +162,11 @@ if (mode === 'create') {
   );
   const media = await payload.create({
     collection: 'media',
-    data: { alt: 'F05-T01 persistence probe' },
+    data: {
+      alt: 'F05-T01 persistence probe',
+      rightsStatus: 'owned',
+      rightsHolder: 'MMDC foundation probe'
+    },
     file: { data: png, mimetype: 'image/png', name: 'foundation.png', size: png.length },
     overrideAccess: true,
     overwriteExistingFiles: true
