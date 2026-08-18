@@ -37,7 +37,7 @@ trap cleanup EXIT
 cd "$ROOT"
 mkdir -p "$evidence_root"
 
-for command in docker node pnpm rg curl; do
+for command in docker node pnpm grep curl; do
   command -v "$command" >/dev/null 2>&1 || fail "required command is unavailable: $command"
 done
 if ! docker compose version >/dev/null 2>&1; then fail 'Docker Compose v2 is unavailable'; fi
@@ -96,7 +96,7 @@ if ! docker build --pull --tag "$image" . >"$evidence_root/image-build.log" 2>&1
   exit 1
 fi
 image_digest="$(docker image inspect --format '{{.Id}}' "$image")"
-if ! printf '%s' "$image_digest" | rg -q '^sha256:[0-9a-f]{64}$'; then
+if ! printf '%s' "$image_digest" | grep -Eq '^sha256:[0-9a-f]{64}$'; then
   fail "application image did not produce a sha256 digest: $image_digest"
   exit 1
 fi
@@ -204,7 +204,7 @@ fi
 initial_ready=0
 for _ in $(seq 1 60); do
   if body="$(curl -fsS "http://127.0.0.1:$caddy_port/api/health/ready" 2>/dev/null)" &&
-    printf '%s' "$body" | rg -q '"status":"ready"'; then
+    printf '%s' "$body" | grep -Eq '"status":"ready"'; then
     initial_ready=1
     break
   fi
@@ -218,13 +218,13 @@ readiness_outage_status="$(curl -sS -o "$evidence_root/readiness-outage.body" -w
 if [ "$readiness_outage_status" = '200' ]; then
   fail 'readiness remained successful during a simulated dependency outage'
 else
-  run_check 'safe readiness failure during dependency outage' rg -q '"status":"not_ready"' "$evidence_root/readiness-outage.body"
+  run_check 'safe readiness failure during dependency outage' grep -Eq '"status":"not_ready"' "$evidence_root/readiness-outage.body"
 fi
 "${compose[@]}" up -d meilisearch >"$evidence_root/outage-restore.log" 2>&1 || fail 'Meilisearch could not be restored'
 recovery_ready=0
 for _ in $(seq 1 60); do
   if body="$(curl -fsS "http://127.0.0.1:$caddy_port/api/health/ready" 2>/dev/null)" &&
-    printf '%s' "$body" | rg -q '"status":"ready"'; then
+    printf '%s' "$body" | grep -Eq '"status":"ready"'; then
     recovery_ready=1
     break
   fi
@@ -264,11 +264,11 @@ if (!response.ok || (await response.json()).value !== "F06-T02") process.exit(1)
 term_log="$evidence_root/application-sigterm.log"
 "${compose[@]}" kill -s SIGTERM application >"$term_log" 2>&1 || fail 'application did not accept SIGTERM'
 for _ in $(seq 1 30); do
-  status="$("${compose[@]}" ps -a --format '{{.Service}} {{.State}}' | rg '^application ' || true)"
-  if printf '%s' "$status" | rg -q 'exited|stopped'; then break; fi
+  status="$("${compose[@]}" ps -a --format '{{.Service}} {{.State}}' | grep -E '^application ' || true)"
+  if printf '%s' "$status" | grep -Eq 'exited|stopped'; then break; fi
   sleep 1
 done
-run_check 'SIGTERM graceful application shutdown' rg -q 'SIGTERM' <(docker logs "$project-application-1" 2>&1 || true)
+run_check 'SIGTERM graceful application shutdown' grep -Eq 'SIGTERM' <(docker logs "$project-application-1" 2>&1 || true)
 "${compose[@]}" up -d application caddy >"$evidence_root/application-restart.log" 2>&1 || fail 'application could not be restarted after SIGTERM'
 for _ in $(seq 1 60); do
   if curl -fsS "http://127.0.0.1:$caddy_port/api/health/live" >/dev/null 2>&1; then break; fi
@@ -284,7 +284,7 @@ const job = await payload.jobs.queue({ task: "foundation-search-probe", input: {
 console.log(job.id);
 process.exit(0);
 ' 2>"$evidence_root/job-queue.stderr" | tail -1)"
-if ! printf '%s' "$job_id" | rg -q '^[0-9]+$'; then
+if ! printf '%s' "$job_id" | grep -Eq '^[0-9]+$'; then
   fail 'recoverable job could not be queued in disposable PostgreSQL'
 else
   processing=0

@@ -231,11 +231,12 @@ jobs:
           import { appendFileSync } from 'node:fs';
 
           const master = process.env.MEILISEARCH_MASTER_KEY;
+          const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
           const createKey = async (description, actions, indexes) => {
             const response = await fetch('http://127.0.0.1:7700/keys', {
               method: 'POST',
               headers: { Authorization: `Bearer ${master}`, 'Content-Type': 'application/json' },
-              body: JSON.stringify({ description, actions, indexes })
+              body: JSON.stringify({ description, actions, indexes, expiresAt })
             });
             if (!response.ok) throw new Error(`Meilisearch key creation failed: ${response.status}`);
             return (await response.json()).key;

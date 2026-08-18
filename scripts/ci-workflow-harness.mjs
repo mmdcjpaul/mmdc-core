@@ -61,6 +61,19 @@ const lintWorkflow = () => {
   for (const image of ['postgres:17', 'getmeili/meilisearch:v1.51.0']) {
     if (!workflow.includes(`image: ${image}`)) fail(`workflow is missing disposable service ${image}`);
   }
+  const integrationStart = workflow.indexOf('  integration:');
+  const relativeNextIntegrationJob = workflow.slice(integrationStart + 3).search(/\n  [a-z][a-z-]*:\n/);
+  const integrationEnd = relativeNextIntegrationJob < 0 ? -1 : integrationStart + 3 + relativeNextIntegrationJob;
+  const integrationJob = workflow.slice(integrationStart, integrationEnd < 0 ? workflow.length : integrationEnd);
+  if (!integrationJob.includes('expiresAt'))
+    fail('integration Meilisearch disposable keys must have a bounded expiration');
+  if (!integrationJob.includes('Date.now() + 10 * 60 * 1000'))
+    fail('integration Meilisearch disposable keys must expire within the test window');
+  const f06 = readFileSync(path.join(root, 'tests/acceptance/F06-T02.sh'), 'utf8');
+  if (/(^|[|;&()\s])rg(?:[|;&()\s]|$)/m.test(f06))
+    fail('container smoke must use commands available on the GitHub runner');
+  if (!f06.includes('for command in docker node pnpm grep curl; do'))
+    fail('container smoke must preflight grep for portable predicates');
   if (!ciJobs.includes("['install', '--frozen-lockfile']")) {
     fail('repository CI install command does not use frozen dependency installation');
   }
@@ -72,7 +85,6 @@ const lintWorkflow = () => {
     fail('migration/container jobs must not be cancellable in progress');
   if (!workflow.includes('actions/upload-artifact@v4')) fail('quality evidence artifact retention is missing');
 
-  const f06 = readFileSync(path.join(root, 'tests/acceptance/F06-T02.sh'), 'utf8');
   if ((f06.match(/docker build --pull --tag/g) ?? []).length !== 1) {
     fail('container smoke must build the production image exactly once');
   }

@@ -233,7 +233,7 @@ oversizedStatus.status.padding = 'x'.repeat(MAX_STATUS_BYTES + 1);
 assert.match(verifyDeploymentEvidence(oversizedStatus).errors.join('\n'), /status exceeds/);
 
 const secret = makeEvidence('happy-path');
-secret.logs[0].message = 'DATABASE_URL=postgresql://user:password@example.invalid/db';
+secret.logs[0].message = ['DATABASE_URL=', 'postgresql://', 'user', ':', 'password', '@example.invalid/db'].join('');
 assert.match(verifyDeploymentEvidence(secret).errors.join('\n'), /sensitive value/);
 
 console.log(
