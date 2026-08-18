@@ -101,6 +101,8 @@ const lintWorkflow = () => {
       : workflow.slice(securityStart, securityEnd < 0 ? workflow.length : securityStart + 3 + securityEnd);
   if (!securityJob.includes('if: always()'))
     fail('security scans must run to retain a blocking missing-evidence report');
+  if (!securityJob.includes('CI_CONTAINER_EVIDENCE_DIR: .artifacts/F06-T02/F06-T02'))
+    fail('security scans must validate the downloaded container evidence root');
 
   if ((f06.match(/docker build --pull --tag/g) ?? []).length !== 1) {
     fail('container smoke must build the production image exactly once');

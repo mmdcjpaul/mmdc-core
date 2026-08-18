@@ -348,7 +348,7 @@ jobs:
       - name: Run security scans against retained container evidence
         if: always()
         env:
-          CI_CONTAINER_EVIDENCE_DIR: .artifacts/F06-T02
+          CI_CONTAINER_EVIDENCE_DIR: .artifacts/F06-T02/F06-T02
         run: pnpm run ci:security-scans
       - name: Retain secret-scan, dependency-scan, license-scan, IaC-scan, container-scan results, SBOM, image-metadata, test-reports, and sanitized logs
         if: always()
