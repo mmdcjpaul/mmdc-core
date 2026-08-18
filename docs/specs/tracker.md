@@ -1,10 +1,10 @@
 ---
 plan: MMDC-WEB-PLAN-001
 plan_version: 0.1
-last_updated: 2026-08-17
+last_updated: 2026-08-18
 status_values: Not started | In progress | Done | Blocked
 progress_total: 25
-progress_done: 12
+progress_done: 13
 progress_blocked: 0
 ---
 
@@ -26,7 +26,7 @@ The first eligible `Not started` row is the next ticket. `loop.sh` resumes an `I
 | F04-T02 | Search and worker | Implement idempotent projection, rebuild, and failure behavior | Done | F04-T01 | docs/specs/F04-T02-search-projection/SPEC.md |
 | F05-T01 | Media storage | Provision private S3 storage and integrate the Payload adapter | Done | F02-T01,F00-T02 | docs/specs/F05-T01-s3-storage/SPEC.md |
 | F05-T02 | Media storage | Enforce governed media validation, delivery, and recovery | Done | F05-T01 | docs/specs/F05-T02-media-governance/SPEC.md |
-| F06-T01 | Production runtime | Build the hardened immutable application image | Not started | F04-T02,F05-T02 | docs/specs/F06-T01-production-image/SPEC.md |
+| F06-T01 | Production runtime | Build the hardened immutable application image | Done | F04-T02,F05-T02 | docs/specs/F06-T01-production-image/SPEC.md |
 | F06-T02 | Production runtime | Define Compose services, health, lifecycle, and smoke tests | Not started | F06-T01 | docs/specs/F06-T02-compose-runtime/SPEC.md |
 | F07-T01 | CI quality | Implement reproducible quality, migration, integration, and image jobs | Not started | F06-T02 | docs/specs/F07-T01-ci-quality-jobs/SPEC.md |
 | F07-T02 | CI quality | Harden CI permissions, scans, artifacts, and merge gates | Not started | F07-T01,F00-T02 | docs/specs/F07-T02-ci-security-gates/SPEC.md |
