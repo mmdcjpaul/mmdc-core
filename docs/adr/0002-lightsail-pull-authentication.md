@@ -29,12 +29,12 @@ development authentication decision.
 
 ### Rationale
 
-Operators authenticate local AWS CLI operations with the named `mmdc` profile.
-The profile is never copied to Lightsail. CloudFormation creates a dedicated
-non-human development workload IAM user in the MMDC AWS account, following the
-`mmdc-v3-development-storage` pattern. A bootstrap script invoked by an
-authorized operator uses `--profile mmdc` to create one access key and streams
-it over the restricted operator SSH path directly into
+Operators authenticate local application-IaC AWS CLI operations with the named
+`mmdc-iaac` assume-role profile. The profile is never copied to Lightsail.
+CloudFormation creates a dedicated non-human development workload IAM user in
+the MMDC AWS account, following the `mmdc-v3-development-storage` pattern. A
+bootstrap script invoked by an authorized operator uses `--profile mmdc-iaac`
+to create one access key and streams it over the restricted operator SSH path directly into
 `/opt/mmdc/secrets/aws.env` as `root:docker` mode `0640`. The value is never
 written to Git, a local project file, CloudFormation output, user data, or a
 deployment-state object.
@@ -82,7 +82,7 @@ Credential and bootstrap handling:
 - No credential value belongs in Git, the image, CloudFormation output, user
   data, logs, or the deployment-state object.
 - Bootstrap creates at most one key, streams it directly from an approved
-  `--profile mmdc` CLI session over the restricted operator SSH path, writes it
+  `--profile mmdc-iaac` CLI session over the restricted operator SSH path, writes it
   to `/opt/mmdc/secrets/aws.env` as `root:docker` mode `0640`, and records no
   secret value in output. If transfer fails, the newly created key is deleted.
 - This SSH stream is the approved bootstrap/secret channel, and
@@ -96,7 +96,7 @@ Rotation and revocation:
 
 - Rotation is explicit and operator-driven because Lightsail has no assumed
   workload-role contract in this design. The operator creates a replacement key
-  through `--profile mmdc`, transfers it through the same protected channel,
+  through `--profile mmdc-iaac`, transfers it through the same protected channel,
   verifies desired-state read, ECR pull, and status write, then revokes the old
   key. A suspected exposure triggers immediate revocation and re-bootstrap.
 - The credential inventory established by F00-T02 owns the rotation interval and

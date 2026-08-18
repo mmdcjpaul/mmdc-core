@@ -44,14 +44,14 @@ assert.deepEqual(template.Rules.ApprovedRegion.Assertions[0].Assert, {
 });
 
 const requiredResources = {
-  DevelopmentEcrRepository: 'AWS::ECR::Repository',
-  DevelopmentMediaBucket: 'AWS::S3::Bucket',
-  DevelopmentDeploymentStateBucket: 'AWS::S3::Bucket',
-  GitHubOidcProvider: 'AWS::IAM::OIDCProvider',
-  GitHubPublisherRole: 'AWS::IAM::Role',
-  DevelopmentHostWorkloadUser: 'AWS::IAM::User',
-  DevelopmentLightsailInstance: 'AWS::Lightsail::Instance',
-  DevelopmentLightsailStaticIp: 'AWS::Lightsail::StaticIp',
+  ApplicationRepository: 'AWS::ECR::Repository',
+  MediaBucket: 'AWS::S3::Bucket',
+  BackupBucket: 'AWS::S3::Bucket',
+  DeploymentBucket: 'AWS::S3::Bucket',
+  GitHubDevelopmentDeployRole: 'AWS::IAM::Role',
+  ApplicationStorageUser: 'AWS::IAM::User',
+  DevelopmentInstance: 'AWS::Lightsail::Instance',
+  DevelopmentStaticIp: 'AWS::Lightsail::StaticIp',
   DevelopmentCpuAlarm: 'AWS::CloudWatch::Alarm',
   DevelopmentBurstCapacityAlarm: 'AWS::CloudWatch::Alarm',
   DevelopmentCloudFrontDistribution: 'AWS::CloudFront::Distribution',
@@ -71,7 +71,7 @@ for (const [logicalId, resource] of Object.entries(resources)) {
   }
 }
 
-for (const logicalId of ['DevelopmentMediaBucket', 'DevelopmentDeploymentStateBucket']) {
+for (const logicalId of ['MediaBucket', 'BackupBucket', 'DeploymentBucket']) {
   const bucket = resources[logicalId];
   assert.equal(bucket.DeletionPolicy, 'Retain', `${logicalId} retains canonical state on deletion`);
   assert.equal(bucket.UpdateReplacePolicy, 'Retain', `${logicalId} retains canonical state on replacement`);
@@ -86,13 +86,10 @@ for (const logicalId of ['DevelopmentMediaBucket', 'DevelopmentDeploymentStateBu
     bucket.Properties.BucketEncryption.ServerSideEncryptionConfiguration[0].ServerSideEncryptionByDefault.SSEAlgorithm,
     'AES256'
   );
-  const lifecycleIds = bucket.Properties.LifecycleConfiguration.Rules.map(({ Id }) => Id);
-  assert.ok(lifecycleIds.some((id) => id.includes('AbortIncomplete')));
-  assert.ok(lifecycleIds.some((id) => id.includes('Noncurrent')));
-  const policy =
-    resources[
-      logicalId === 'DevelopmentMediaBucket' ? 'DevelopmentMediaBucketPolicy' : 'DevelopmentDeploymentStateBucketPolicy'
-    ];
+  const lifecycleRules = bucket.Properties.LifecycleConfiguration.Rules;
+  assert.ok(lifecycleRules.some(({ AbortIncompleteMultipartUpload }) => AbortIncompleteMultipartUpload));
+  assert.ok(lifecycleRules.some(({ NoncurrentVersionExpiration }) => NoncurrentVersionExpiration));
+  const policy = resources[`${logicalId}Policy`];
   assert.equal(
     policy.Properties.PolicyDocument.Statement.every(({ Effect }) => Effect === 'Deny'),
     true,
@@ -100,30 +97,38 @@ for (const logicalId of ['DevelopmentMediaBucket', 'DevelopmentDeploymentStateBu
   );
 }
 
-const ecr = resources.DevelopmentEcrRepository;
+const ecr = resources.ApplicationRepository;
 assert.equal(ecr.DeletionPolicy, 'Retain');
 assert.equal(ecr.UpdateReplacePolicy, 'Retain');
 assert.equal(ecr.Properties.ImageTagMutability, 'IMMUTABLE');
 assert.equal(ecr.Properties.ImageScanningConfiguration.ScanOnPush, true);
 assert.match(ecr.Properties.LifecyclePolicy.LifecyclePolicyText, /tagStatus/);
 assert.match(ecr.Properties.LifecyclePolicy.LifecyclePolicyText, /countNumber/);
-assert.equal(resources.DevelopmentLightsailInstance.DeletionPolicy, 'Retain');
-assert.equal(resources.DevelopmentLightsailInstance.UpdateReplacePolicy, 'Retain');
-assert.deepEqual(resources.DevelopmentLightsailStaticIp.Properties.AttachedTo, { Ref: 'DevelopmentLightsailInstance' });
+assert.equal(resources.DevelopmentInstance.DeletionPolicy, 'Retain');
+assert.equal(resources.DevelopmentInstance.UpdateReplacePolicy, 'Retain');
+assert.deepEqual(resources.DevelopmentStaticIp.Properties.AttachedTo, { Ref: 'DevelopmentInstance' });
 
-const ports = resources.DevelopmentLightsailInstance.Properties.Networking.Ports;
+const ports = resources.DevelopmentInstance.Properties.Networking.Ports;
 assert.deepEqual(
   ports.map(({ FromPort, ToPort, Protocol }) => [FromPort, ToPort, Protocol]),
   [
+    [22, 22, 'tcp'],
     [80, 80, 'tcp'],
     [443, 443, 'tcp']
   ]
 );
-assert.ok(ports.every(({ AccessType, AccessFrom }) => AccessType === 'Public' && AccessFrom === '0.0.0.0/0'));
-assert.equal(
-  ports.some(({ FromPort, ToPort }) => FromPort <= 22 && ToPort >= 22),
-  false,
-  'SSH is not a public Lightsail port'
+const sshPort = ports.find(({ FromPort, ToPort }) => FromPort === 22 && ToPort === 22);
+assert.equal(sshPort.AccessType, 'Public');
+assert.equal(sshPort.AccessFrom, 'Custom');
+assert.deepEqual(sshPort.Cidrs, [{ Ref: 'SshCidr' }]);
+assert.deepEqual(sshPort.CidrListAliases, ['lightsail-connect']);
+assert.ok(
+  ports
+    .filter(({ FromPort }) => FromPort !== 22)
+    .every(
+      ({ AccessType, AccessFrom, Cidrs }) =>
+        AccessType === 'Public' && AccessFrom === 'Anywhere (0.0.0.0/0)' && Cidrs.includes('0.0.0.0/0')
+    )
 );
 
 const raw = JSON.stringify(template);
@@ -141,7 +146,11 @@ assert.equal(
   Object.keys(template.Parameters).some((key) => /secret|password|credential|token|api.?key/i.test(key)),
   false
 );
-assert.equal(Object.hasOwn(resources.DevelopmentLightsailInstance.Properties, 'UserData'), false);
+assert.match(resources.DevelopmentInstance.Properties.UserData, /^#!\/usr\/bin\/env bash/);
+assert.doesNotMatch(
+  resources.DevelopmentInstance.Properties.UserData,
+  /AKIA[0-9A-Z]{16}|ASIA[0-9A-Z]{16}|postgres(?:ql)?:\/\/[^\s:@]+:[^\s@]+@/i
+);
 assert.equal(/AWS::Neon|neon[A-Z]/i.test(Object.keys(resources).join('\n')), false, 'no Neon resource is modeled');
 assert.equal(
   /production|staging/i.test(Object.keys(resources).join('\n')),
@@ -155,13 +164,16 @@ const refs = {
   OwnerTag: 'Engineering',
   GitHubRepository: 'mmdcjpaul/mmdc-core',
   GitHubWorkflowRef: 'mmdcjpaul/mmdc-core/.github/workflows/release.yml@refs/heads/development',
+  GitHubOidcProviderArn: 'arn:aws:iam::123456789012:oidc-provider/token.actions.githubusercontent.com',
+  SshCidr: '192.0.2.10/32',
   'AWS::AccountId': '123456789012',
   'AWS::Region': 'ap-southeast-1'
 };
 const values = {
-  DevelopmentEcrRepository: 'mmdc-v3-development-app',
-  DevelopmentMediaBucket: 'mmdc-v3-development-media-123456789012',
-  DevelopmentDeploymentStateBucket: 'mmdc-v3-development-deployment-state-123456789012'
+  ApplicationRepository: 'mmdc-v3-development',
+  MediaBucket: 'mmdc-v3-development-media-123456789012-ap-southeast-1',
+  BackupBucket: 'mmdc-v3-development-backups-123456789012-ap-southeast-1',
+  DeploymentBucket: 'mmdc-v3-development-deployments-123456789012-ap-southeast-1'
 };
 function render(value) {
   if (typeof value === 'string') return value;
@@ -170,7 +182,7 @@ function render(value) {
   if (value['Fn::GetAtt']) {
     const [logicalId, attribute] = value['Fn::GetAtt'];
     if (attribute === 'Arn' && values[logicalId]) {
-      if (logicalId === 'DevelopmentEcrRepository')
+      if (logicalId === 'ApplicationRepository')
         return `arn:aws:ecr:ap-southeast-1:${refs['AWS::AccountId']}:repository/${values[logicalId]}`;
       return `arn:aws:s3:::${values[logicalId]}`;
     }
@@ -205,18 +217,18 @@ function allows(statement, action, resource) {
 function policyStatements(resource) {
   return resource.Properties.Policies.flatMap(({ PolicyDocument }) => PolicyDocument.Statement);
 }
-const publisherStatements = policyStatements(resources.GitHubPublisherRole).map((statement) => ({
+const publisherStatements = policyStatements(resources.GitHubDevelopmentDeployRole).map((statement) => ({
   ...statement,
   renderedResource: render(statement.Resource)
 }));
-const hostStatements = policyStatements(resources.DevelopmentHostWorkloadUser).map((statement) => ({
+const hostStatements = policyStatements(resources.ApplicationStorageUser).map((statement) => ({
   ...statement,
   renderedResource: render(statement.Resource)
 }));
-const ecrArn = render({ 'Fn::GetAtt': ['DevelopmentEcrRepository', 'Arn'] });
-const mediaPrefix = `${render({ 'Fn::GetAtt': ['DevelopmentMediaBucket', 'Arn'] })}/media/record-00000000/file.png`;
-const mediaOtherPrefix = `${render({ 'Fn::GetAtt': ['DevelopmentMediaBucket', 'Arn'] })}/private/file.png`;
-const stateArn = render({ 'Fn::GetAtt': ['DevelopmentDeploymentStateBucket', 'Arn'] });
+const ecrArn = render({ 'Fn::GetAtt': ['ApplicationRepository', 'Arn'] });
+const mediaPrefix = `${render({ 'Fn::GetAtt': ['MediaBucket', 'Arn'] })}/media/record-00000000/file.png`;
+const mediaOtherPrefix = `${render({ 'Fn::GetAtt': ['MediaBucket', 'Arn'] })}/private/file.png`;
+const stateArn = render({ 'Fn::GetAtt': ['DeploymentBucket', 'Arn'] });
 
 assert.equal(
   publisherStatements.some((statement) => allows(statement, 'ecr:PutImage', `${ecrArn}`)),
@@ -224,7 +236,7 @@ assert.equal(
   'publisher allows image publication to the development repository'
 );
 assert.equal(
-  publisherStatements.some((statement) => allows(statement, 'ecr:PutImage', ecrArn.replace(/app$/, 'other'))),
+  publisherStatements.some((statement) => allows(statement, 'ecr:PutImage', `${ecrArn}-other`)),
   false,
   'publisher denies image publication to another repository'
 );
@@ -298,8 +310,8 @@ for (const statement of [...publisherStatements, ...hostStatements]) {
     );
 }
 
-const trustStatement = resources.GitHubPublisherRole.Properties.AssumeRolePolicyDocument.Statement[0];
-assert.equal(trustStatement.Principal.Federated.Ref, 'GitHubOidcProvider');
+const trustStatement = resources.GitHubDevelopmentDeployRole.Properties.AssumeRolePolicyDocument.Statement[0];
+assert.equal(trustStatement.Principal.Federated.Ref, 'GitHubOidcProviderArn');
 assert.equal(trustStatement.Condition.StringEquals['token.actions.githubusercontent.com:aud'], 'sts.amazonaws.com');
 const trustedSub = render(trustStatement.Condition.StringLike['token.actions.githubusercontent.com:sub']);
 const trustedWorkflow = render(
@@ -338,8 +350,9 @@ for (const subject of [
   assert.match(costRegister, new RegExp(`\\|[^|]*${subject}[^|]*\\|`));
 }
 const costOutput = template.Outputs.MonthlyPlanningCostEstimate.Value;
-assert.match(costOutput, /USD 40-125 per month/);
+assert.match(costOutput, /USD 80-205 per month/);
 assert.match(costOutput, /USD 40-265/);
+assert.match(costOutput, /USD 80-345/);
 assert.match(costRegister, /planning envelope is \*\*USD 40–265 per month\*\*/);
 
 console.log(

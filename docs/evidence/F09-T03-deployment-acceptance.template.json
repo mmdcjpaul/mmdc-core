@@ -1,0 +1,87 @@
+{
+  "schemaVersion": 1,
+  "evidenceType": "deployment-acceptance",
+  "authenticity": "authentic",
+  "synthetic": false,
+  "scenario": "happy-path",
+  "environment": "development",
+  "repository": "OWNER/REPOSITORY",
+  "releaseId": "OWNER/REPOSITORY@vMAJOR.MINOR.PATCH-dev.N",
+  "correlationId": "WORKFLOW-RUN-CORRELATION-ID",
+  "release": {
+    "tag": "vMAJOR.MINOR.PATCH-dev.N",
+    "semanticVersion": "MAJOR.MINOR.PATCH-dev.N",
+    "gitSha": "40-CHARACTER-LOWERCASE-GIT-SHA"
+  },
+  "source": {
+    "repository": "OWNER/REPOSITORY",
+    "eventName": "push",
+    "ref": "refs/tags/vMAJOR.MINOR.PATCH-dev.N",
+    "refType": "tag",
+    "workflowRef": "OWNER/REPOSITORY/.github/workflows/release.yml@refs/heads/development",
+    "runId": "GITHUB-RUN-ID",
+    "actor": "APPROVED-ACTOR"
+  },
+  "publication": {
+    "repository": "ACCOUNT.dkr.ecr.ap-southeast-1.amazonaws.com/mmdc-v3-development",
+    "tag": "vMAJOR.MINOR.PATCH-dev.N",
+    "gitSha": "40-CHARACTER-LOWERCASE-GIT-SHA",
+    "gitShaTag": "ACCOUNT.dkr.ecr.ap-southeast-1.amazonaws.com/mmdc-v3-development:40-CHARACTER-LOWERCASE-GIT-SHA",
+    "ecrDigest": "sha256:64-CHARACTER-LOWERCASE-DIGEST"
+  },
+  "desiredState": {
+    "environment": "development",
+    "digest": "sha256:64-CHARACTER-LOWERCASE-DIGEST",
+    "canonicalSha256": "64-CHARACTER-LOWERCASE-HASH",
+    "artifactSha256": "64-CHARACTER-LOWERCASE-HASH",
+    "migrationVersion": "COMMITTED-MIGRATION-VERSION",
+    "document": "INSERT-EXACT-F09-T01-DESIRED-STATE-OBJECT"
+  },
+  "migration": {
+    "gitSha": "40-CHARACTER-LOWERCASE-GIT-SHA",
+    "digest": "sha256:64-CHARACTER-LOWERCASE-DIGEST",
+    "version": "COMMITTED-MIGRATION-VERSION",
+    "status": "succeeded"
+  },
+  "previous": { "digest": "sha256:64-CHARACTER-LOWERCASE-DIGEST" },
+  "services": {
+    "web": {
+      "digest": "sha256:64-CHARACTER-LOWERCASE-DIGEST",
+      "releaseId": "OWNER/REPOSITORY@vMAJOR.MINOR.PATCH-dev.N"
+    },
+    "worker": {
+      "digest": "sha256:64-CHARACTER-LOWERCASE-DIGEST",
+      "releaseId": "OWNER/REPOSITORY@vMAJOR.MINOR.PATCH-dev.N"
+    }
+  },
+  "probes": [],
+  "final": {
+    "status": "succeeded",
+    "reason": "deployment-health-gate-passed",
+    "releaseId": "OWNER/REPOSITORY@vMAJOR.MINOR.PATCH-dev.N",
+    "correlationId": "WORKFLOW-RUN-CORRELATION-ID",
+    "observedAt": "UTC-ISO-8601-TIMESTAMP"
+  },
+  "status": {
+    "schemaVersion": 1,
+    "environment": "development",
+    "status": "succeeded",
+    "reason": "deployment-health-gate-passed",
+    "gitSha": "40-CHARACTER-LOWERCASE-GIT-SHA",
+    "tag": "vMAJOR.MINOR.PATCH-dev.N",
+    "targetDigest": "sha256:64-CHARACTER-LOWERCASE-DIGEST",
+    "releaseId": "OWNER/REPOSITORY@vMAJOR.MINOR.PATCH-dev.N",
+    "correlationId": "WORKFLOW-RUN-CORRELATION-ID",
+    "sanitized": true
+  },
+  "stages": [],
+  "approvals": [],
+  "artifacts": [],
+  "logs": [],
+  "external": {
+    "provider": "AWS/GitHub/Lightsail/Neon as applicable",
+    "account": "ACCOUNT-OR-PROVIDER-IDENTIFIER",
+    "region": "ap-southeast-1",
+    "retainedRefs": []
+  }
+}

@@ -39,10 +39,10 @@ validate_specs() {
   if [ ! -f "$ROOT/AGENTS.md" ]; then
     fail "missing repository-wide AGENTS.md"
     errors=$((errors + 1))
-  elif ! rg -q 'Every AWS CLI invocation.*`mmdc` profile' "$ROOT/AGENTS.md" \
-    || ! rg -q 'aws sts get-caller-identity --profile mmdc' "$ROOT/AGENTS.md" \
+  elif ! rg -q 'Every application-infrastructure AWS CLI invocation' "$ROOT/AGENTS.md" \
+    || ! rg -q 'aws sts get-caller-identity --profile mmdc-iaac' "$ROOT/AGENTS.md" \
     || ! rg -q 'Do not use, modify, or rely on the AWS `default` profile' "$ROOT/AGENTS.md"; then
-    fail "AGENTS.md must enforce the mmdc AWS profile and identity check"
+    fail "AGENTS.md must enforce the mmdc-iaac AWS profile and identity check"
     errors=$((errors + 1))
   fi
 

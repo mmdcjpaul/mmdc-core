@@ -4,8 +4,8 @@ plan_version: 0.1
 last_updated: 2026-08-18
 status_values: Not started | In progress | Done | Blocked
 progress_total: 25
-progress_done: 17
-progress_blocked: 0
+progress_done: 20
+progress_blocked: 1
 ---
 
 # Foundation implementation tracker
@@ -31,10 +31,10 @@ The first eligible `Not started` row is the next ticket. `loop.sh` resumes an `I
 | F07-T01 | CI quality | Implement reproducible quality, migration, integration, and image jobs | Done | F06-T02 | docs/specs/F07-T01-ci-quality-jobs/SPEC.md |
 | F07-T02 | CI quality | Harden CI permissions, scans, artifacts, and merge gates | Done | F07-T01,F00-T02 | docs/specs/F07-T02-ci-security-gates/SPEC.md |
 | F08-T01 | AWS infrastructure | Define tagged development infrastructure in CloudFormation | Done | F07-T02,F05-T02 | docs/specs/F08-T01-cloudformation/SPEC.md |
-| F08-T02 | AWS infrastructure | Bootstrap and approve reproducible host provisioning | Not started | F08-T01,F00-T02 | docs/specs/F08-T02-host-bootstrap/SPEC.md |
-| F09-T01 | Deployment | Validate release tags and publish immutable ECR desired state | Not started | F08-T02 | docs/specs/F09-T01-release-publication/SPEC.md |
-| F09-T02 | Deployment | Implement pull deployment, one-shot migration, and health rollback | Not started | F09-T01 | docs/specs/F09-T02-pull-deployment/SPEC.md |
-| F09-T03 | Deployment | Prove deployment rejection, idempotency, audit, and recovery paths | Not started | F09-T02 | docs/specs/F09-T03-deployment-acceptance/SPEC.md |
+| F08-T02 | AWS infrastructure | Bootstrap and approve reproducible host provisioning | Done | F08-T01,F00-T02 | docs/specs/F08-T02-host-bootstrap/SPEC.md |
+| F09-T01 | Deployment | Validate release tags and publish immutable ECR desired state | Done | F08-T02 | docs/specs/F09-T01-release-publication/SPEC.md |
+| F09-T02 | Deployment | Implement pull deployment, one-shot migration, and health rollback | Done | F09-T01 | docs/specs/F09-T02-pull-deployment/SPEC.md |
+| F09-T03 | Deployment | Prove deployment rejection, idempotency, audit, and recovery paths | Blocked | F09-T02 | docs/specs/F09-T03-deployment-acceptance/SPEC.md |
 | F10-T01 | Operations | Enforce edge access and network isolation | Not started | F09-T03 | docs/specs/F10-T01-edge-security/SPEC.md |
 | F10-T02 | Operations | Establish observability, alerts, and operational runbooks | Not started | F10-T01 | docs/specs/F10-T02-observability-runbooks/SPEC.md |
 | F10-T03 | Operations | Rehearse recovery and validate host capacity | Not started | F10-T02 | docs/specs/F10-T03-recovery-capacity/SPEC.md |

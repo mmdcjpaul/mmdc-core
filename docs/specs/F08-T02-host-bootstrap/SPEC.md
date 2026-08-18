@@ -15,9 +15,17 @@ Make a fresh Lightsail host reproducible from reviewed definitions without compi
 
 - **F08-T02-R01 — Event-driven:** WHEN a fresh development host boots, version-controlled bootstrap SHALL install/configure Docker Engine and Compose, Caddy, the pull deployment agent, protected runtime environment files, log rotation, and approved backup tooling.
 - **F08-T02-R02 — Prohibition:** The host bootstrap SHALL NOT embed source credentials, Neon secrets, application secrets, or unbounded AWS credentials in source, CloudFormation user data, output, or logs.
-- **F08-T02-R03 — Event-driven:** WHEN infrastructure change is proposed, operators SHALL verify the `mmdc` AWS identity, validate/lint, create and inspect a change set, review region/names/bundle/ports/IAM/costs/deletion/tags, and obtain explicit approval for that exact change set before execution.
+- **F08-T02-R03 — Event-driven:** WHEN infrastructure change is proposed, operators SHALL verify the `mmdc-iaac` assumed-role AWS identity, validate/lint, create and inspect a change set, review region/names/bundle/ports/IAM/costs/deletion/tags, and obtain explicit approval for that exact change set before execution.
 - **F08-T02-R04 — Event-driven:** WHEN a host is recreated, it SHALL reach deployment-ready state from CloudFormation and the bootstrap runbook without manual source compilation.
 - **F08-T02-R05 — Prohibition:** The autonomous loop SHALL NOT execute a change set or fabricate provisioning/approval evidence.
+
+For this ticket, `deployment-ready` means Phase 8 readiness-ready: the host
+has completed the reviewed bootstrap, protected environment-file locations and
+service boundaries are in place, and the pull agent is enabled and ready to
+receive a later approved release. Phase 9 owns runtime secret delivery,
+immutable image publication, desired state, deployment transitions, and release
+health evidence. Their absence is therefore not an F08-T02 failure and must not
+be satisfied with invented values.
 
 ## Acceptance criteria
 

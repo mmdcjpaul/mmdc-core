@@ -398,7 +398,7 @@ Important constraint:
 
 Pre-provisioning gate:
 
-1. verify `aws sts get-caller-identity` using profile `mmdc`;
+1. verify `aws sts get-caller-identity` using profile `mmdc-iaac`;
 2. validate/lint the template;
 3. create and inspect a change set;
 4. review region, names, bundle, public ports, IAM, costs, deletion policies, and tags;

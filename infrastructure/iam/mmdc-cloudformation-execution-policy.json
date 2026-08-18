@@ -1,0 +1,135 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "ManageDevelopmentEcrRepository",
+      "Effect": "Allow",
+      "Action": [
+        "ecr:CreateRepository",
+        "ecr:DeleteLifecyclePolicy",
+        "ecr:DeleteRepository",
+        "ecr:DescribeRepositories",
+        "ecr:GetLifecyclePolicy",
+        "ecr:GetRepositoryPolicy",
+        "ecr:ListTagsForResource",
+        "ecr:PutImageScanningConfiguration",
+        "ecr:PutImageTagMutability",
+        "ecr:PutLifecyclePolicy",
+        "ecr:SetRepositoryPolicy",
+        "ecr:DeleteRepositoryPolicy",
+        "ecr:TagResource",
+        "ecr:UntagResource"
+      ],
+      "Resource": "arn:aws:ecr:ap-southeast-1:349762920349:repository/mmdc-v3-development"
+    },
+    {
+      "Sid": "ManageDevelopmentBuckets",
+      "Effect": "Allow",
+      "Action": [
+        "s3:CreateBucket",
+        "s3:DeleteBucket",
+        "s3:DeleteBucketPolicy",
+        "s3:GetEncryptionConfiguration",
+        "s3:GetBucketPolicy",
+        "s3:GetBucketPublicAccessBlock",
+        "s3:GetBucketOwnershipControls",
+        "s3:GetBucketTagging",
+        "s3:GetBucketVersioning",
+        "s3:GetLifecycleConfiguration",
+        "s3:ListBucket",
+        "s3:PutEncryptionConfiguration",
+        "s3:PutBucketPolicy",
+        "s3:PutBucketPublicAccessBlock",
+        "s3:PutBucketOwnershipControls",
+        "s3:PutBucketTagging",
+        "s3:PutBucketVersioning",
+        "s3:PutLifecycleConfiguration"
+      ],
+      "Resource": [
+        "arn:aws:s3:::mmdc-v3-development-media-349762920349-ap-southeast-1",
+        "arn:aws:s3:::mmdc-v3-development-backups-349762920349-ap-southeast-1",
+        "arn:aws:s3:::mmdc-v3-development-deployments-349762920349-ap-southeast-1"
+      ]
+    },
+    {
+      "Sid": "ManageDevelopmentIamResources",
+      "Effect": "Allow",
+      "Action": [
+        "iam:CreateRole",
+        "iam:DeleteRole",
+        "iam:DeleteRolePolicy",
+        "iam:GetRole",
+        "iam:GetRolePolicy",
+        "iam:ListRolePolicies",
+        "iam:ListRoleTags",
+        "iam:PutRolePolicy",
+        "iam:TagRole",
+        "iam:UntagRole",
+        "iam:UpdateAssumeRolePolicy",
+        "iam:UpdateRole",
+        "iam:CreateUser",
+        "iam:DeleteUser",
+        "iam:DeleteUserPolicy",
+        "iam:GetUser",
+        "iam:GetUserPolicy",
+        "iam:ListUserPolicies",
+        "iam:ListUserTags",
+        "iam:PutUserPolicy",
+        "iam:TagUser",
+        "iam:UntagUser"
+      ],
+      "Resource": [
+        "arn:aws:iam::349762920349:role/mmdc-v3-development-github-deploy",
+        "arn:aws:iam::349762920349:user/mmdc-v3-development-storage"
+      ]
+    },
+    {
+      "Sid": "ManageDevelopmentLightsailResources",
+      "Effect": "Allow",
+      "Action": [
+        "lightsail:AllocateStaticIp",
+        "lightsail:AttachStaticIp",
+        "lightsail:CloseInstancePublicPorts",
+        "lightsail:CreateInstances",
+        "lightsail:DeleteInstance",
+        "lightsail:DetachStaticIp",
+        "lightsail:DisableAddOn",
+        "lightsail:EnableAddOn",
+        "lightsail:GetInstance",
+        "lightsail:GetInstanceMetricData",
+        "lightsail:GetInstances",
+        "lightsail:GetStaticIp",
+        "lightsail:GetStaticIps",
+        "lightsail:OpenInstancePublicPorts",
+        "lightsail:PutInstancePublicPorts",
+        "lightsail:ReleaseStaticIp",
+        "lightsail:StartInstance",
+        "lightsail:TagResource",
+        "lightsail:UntagResource",
+        "lightsail:UpdateInstanceMetadataOptions"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-southeast-1"
+        }
+      }
+    },
+    {
+      "Sid": "ManageDevelopmentCloudWatchAlarms",
+      "Effect": "Allow",
+      "Action": [
+        "cloudwatch:DeleteAlarms",
+        "cloudwatch:DescribeAlarms",
+        "cloudwatch:ListTagsForResource",
+        "cloudwatch:PutMetricAlarm",
+        "cloudwatch:TagResource",
+        "cloudwatch:UntagResource"
+      ],
+      "Resource": [
+        "arn:aws:cloudwatch:ap-southeast-1:349762920349:alarm:mmdc-v3-development-lightsail-cpu-high",
+        "arn:aws:cloudwatch:ap-southeast-1:349762920349:alarm:mmdc-v3-development-lightsail-burst-low"
+      ]
+    }
+  ]
+}

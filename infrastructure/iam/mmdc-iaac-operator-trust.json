@@ -1,0 +1,13 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "AllowIaacBootstrapUser",
+      "Effect": "Allow",
+      "Principal": {
+        "AWS": "arn:aws:iam::349762920349:user/mmdc-iaac-bootstrap"
+      },
+      "Action": "sts:AssumeRole"
+    }
+  ]
+}
