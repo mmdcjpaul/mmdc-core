@@ -14,19 +14,25 @@
     "ProjectName": {
       "Type": "String",
       "Default": "mmdc-v3",
-      "AllowedValues": ["mmdc-v3"],
+      "AllowedValues": [
+        "mmdc-v3"
+      ],
       "Description": "Fixed project tag and resource prefix."
     },
     "EnvironmentName": {
       "Type": "String",
       "Default": "development",
-      "AllowedValues": ["development"],
+      "AllowedValues": [
+        "development"
+      ],
       "Description": "This stack is development-only."
     },
     "OwnerTag": {
       "Type": "String",
       "Default": "Engineering",
-      "AllowedValues": ["Engineering"],
+      "AllowedValues": [
+        "Engineering"
+      ],
       "Description": "Approved accountable owner role for managed AWS resources."
     },
     "GitHubRepository": {
@@ -74,25 +80,36 @@
     "EnableDevelopmentEdge": {
       "Type": "String",
       "Default": "false",
-      "AllowedValues": ["false", "true"],
+      "AllowedValues": [
+        "false",
+        "true"
+      ],
       "Description": "Create the parameterized DNS/CloudFront resources only after the separate DNS and security decision is approved."
     },
     "AvailabilityZone": {
       "Type": "String",
       "Default": "ap-southeast-1a",
-      "AllowedValues": ["ap-southeast-1a", "ap-southeast-1b", "ap-southeast-1c"],
+      "AllowedValues": [
+        "ap-southeast-1a",
+        "ap-southeast-1b",
+        "ap-southeast-1c"
+      ],
       "Description": "Development host availability zone in the approved Singapore region."
     },
     "BundleId": {
       "Type": "String",
       "Default": "medium_3_0",
-      "AllowedValues": ["medium_3_0"],
+      "AllowedValues": [
+        "medium_3_0"
+      ],
       "Description": "Approved starting Lightsail bundle: 4 GB class."
     },
     "BlueprintId": {
       "Type": "String",
       "Default": "ubuntu_24_04",
-      "AllowedValues": ["ubuntu_24_04"],
+      "AllowedValues": [
+        "ubuntu_24_04"
+      ],
       "Description": "Pinned host blueprint; host bootstrap is supplied through the separately approved host procedure."
     },
     "KeyPairName": {
@@ -112,7 +129,12 @@
       "Assertions": [
         {
           "Assert": {
-            "Fn::Equals": [{ "Ref": "AWS::Region" }, "ap-southeast-1"]
+            "Fn::Equals": [
+              {
+                "Ref": "AWS::Region"
+              },
+              "ap-southeast-1"
+            ]
           },
           "AssertDescription": "The MMDC development stack may be evaluated only in ap-southeast-1."
         }
@@ -121,7 +143,12 @@
   },
   "Conditions": {
     "DevelopmentEdgeEnabled": {
-      "Fn::Equals": [{ "Ref": "EnableDevelopmentEdge" }, "true"]
+      "Fn::Equals": [
+        {
+          "Ref": "EnableDevelopmentEdge"
+        },
+        "true"
+      ]
     }
   },
   "Resources": {
@@ -130,10 +157,16 @@
       "DeletionPolicy": "Retain",
       "UpdateReplacePolicy": "Retain",
       "Properties": {
-        "RepositoryName": { "Fn::Sub": "${ProjectName}-${EnvironmentName}" },
+        "RepositoryName": {
+          "Fn::Sub": "${ProjectName}-${EnvironmentName}"
+        },
         "ImageTagMutability": "IMMUTABLE",
-        "ImageScanningConfiguration": { "ScanOnPush": true },
-        "EncryptionConfiguration": { "EncryptionType": "AES256" },
+        "ImageScanningConfiguration": {
+          "ScanOnPush": true
+        },
+        "EncryptionConfiguration": {
+          "EncryptionType": "AES256"
+        },
         "LifecyclePolicy": {
           "LifecyclePolicyText": "{\"rules\":[{\"rulePriority\":1,\"description\":\"Retain the 30 most recent development images\",\"selection\":{\"tagStatus\":\"any\",\"countType\":\"imageCountMoreThan\",\"countNumber\":30},\"action\":{\"type\":\"expire\"}}]}"
         },
@@ -145,15 +178,37 @@
               "Effect": "Deny",
               "Principal": "*",
               "Action": "ecr:*",
-              "Condition": { "Bool": { "aws:SecureTransport": "false" } }
+              "Condition": {
+                "Bool": {
+                  "aws:SecureTransport": "false"
+                }
+              }
             }
           ]
         },
         "Tags": [
-          { "Key": "Project", "Value": { "Ref": "ProjectName" } },
-          { "Key": "Environment", "Value": { "Ref": "EnvironmentName" } },
-          { "Key": "ManagedBy", "Value": "cloudformation" },
-          { "Key": "Owner", "Value": { "Ref": "OwnerTag" } }
+          {
+            "Key": "Project",
+            "Value": {
+              "Ref": "ProjectName"
+            }
+          },
+          {
+            "Key": "Environment",
+            "Value": {
+              "Ref": "EnvironmentName"
+            }
+          },
+          {
+            "Key": "ManagedBy",
+            "Value": "cloudformation"
+          },
+          {
+            "Key": "Owner",
+            "Value": {
+              "Ref": "OwnerTag"
+            }
+          }
         ]
       }
     },
@@ -162,12 +217,28 @@
       "DeletionPolicy": "Retain",
       "UpdateReplacePolicy": "Retain",
       "Properties": {
-        "BucketName": { "Fn::Sub": "${ProjectName}-${EnvironmentName}-media-${AWS::AccountId}-${AWS::Region}" },
-        "BucketEncryption": {
-          "ServerSideEncryptionConfiguration": [{ "ServerSideEncryptionByDefault": { "SSEAlgorithm": "AES256" } }]
+        "BucketName": {
+          "Fn::Sub": "${ProjectName}-${EnvironmentName}-media-${AWS::AccountId}-${AWS::Region}"
         },
-        "VersioningConfiguration": { "Status": "Enabled" },
-        "OwnershipControls": { "Rules": [{ "ObjectOwnership": "BucketOwnerEnforced" }] },
+        "BucketEncryption": {
+          "ServerSideEncryptionConfiguration": [
+            {
+              "ServerSideEncryptionByDefault": {
+                "SSEAlgorithm": "AES256"
+              }
+            }
+          ]
+        },
+        "VersioningConfiguration": {
+          "Status": "Enabled"
+        },
+        "OwnershipControls": {
+          "Rules": [
+            {
+              "ObjectOwnership": "BucketOwnerEnforced"
+            }
+          ]
+        },
         "PublicAccessBlockConfiguration": {
           "BlockPublicAcls": true,
           "BlockPublicPolicy": true,
@@ -179,27 +250,52 @@
             {
               "Id": "AbortIncompleteMultipartUploads",
               "Status": "Enabled",
-              "AbortIncompleteMultipartUpload": { "DaysAfterInitiation": 7 }
+              "AbortIncompleteMultipartUpload": {
+                "DaysAfterInitiation": 7
+              }
             },
             {
               "Id": "RemoveOldNoncurrentVersions",
               "Status": "Enabled",
-              "NoncurrentVersionExpiration": { "NoncurrentDays": 90, "NewerNoncurrentVersions": 5 }
+              "NoncurrentVersionExpiration": {
+                "NoncurrentDays": 90,
+                "NewerNoncurrentVersions": 5
+              }
             }
           ]
         },
         "Tags": [
-          { "Key": "Project", "Value": { "Ref": "ProjectName" } },
-          { "Key": "Environment", "Value": { "Ref": "EnvironmentName" } },
-          { "Key": "ManagedBy", "Value": "cloudformation" },
-          { "Key": "Owner", "Value": { "Ref": "OwnerTag" } }
+          {
+            "Key": "Project",
+            "Value": {
+              "Ref": "ProjectName"
+            }
+          },
+          {
+            "Key": "Environment",
+            "Value": {
+              "Ref": "EnvironmentName"
+            }
+          },
+          {
+            "Key": "ManagedBy",
+            "Value": "cloudformation"
+          },
+          {
+            "Key": "Owner",
+            "Value": {
+              "Ref": "OwnerTag"
+            }
+          }
         ]
       }
     },
     "MediaBucketPolicy": {
       "Type": "AWS::S3::BucketPolicy",
       "Properties": {
-        "Bucket": { "Ref": "MediaBucket" },
+        "Bucket": {
+          "Ref": "MediaBucket"
+        },
         "PolicyDocument": {
           "Version": "2012-10-17",
           "Statement": [
@@ -208,8 +304,22 @@
               "Effect": "Deny",
               "Principal": "*",
               "Action": "s3:*",
-              "Resource": [{ "Fn::GetAtt": ["MediaBucket", "Arn"] }, { "Fn::Sub": "${MediaBucket.Arn}/*" }],
-              "Condition": { "Bool": { "aws:SecureTransport": "false" } }
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "MediaBucket",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Sub": "${MediaBucket.Arn}/*"
+                }
+              ],
+              "Condition": {
+                "Bool": {
+                  "aws:SecureTransport": "false"
+                }
+              }
             }
           ]
         }
@@ -220,12 +330,28 @@
       "DeletionPolicy": "Retain",
       "UpdateReplacePolicy": "Retain",
       "Properties": {
-        "BucketName": { "Fn::Sub": "${ProjectName}-${EnvironmentName}-backups-${AWS::AccountId}-${AWS::Region}" },
-        "BucketEncryption": {
-          "ServerSideEncryptionConfiguration": [{ "ServerSideEncryptionByDefault": { "SSEAlgorithm": "AES256" } }]
+        "BucketName": {
+          "Fn::Sub": "${ProjectName}-${EnvironmentName}-backups-${AWS::AccountId}-${AWS::Region}"
         },
-        "VersioningConfiguration": { "Status": "Enabled" },
-        "OwnershipControls": { "Rules": [{ "ObjectOwnership": "BucketOwnerEnforced" }] },
+        "BucketEncryption": {
+          "ServerSideEncryptionConfiguration": [
+            {
+              "ServerSideEncryptionByDefault": {
+                "SSEAlgorithm": "AES256"
+              }
+            }
+          ]
+        },
+        "VersioningConfiguration": {
+          "Status": "Enabled"
+        },
+        "OwnershipControls": {
+          "Rules": [
+            {
+              "ObjectOwnership": "BucketOwnerEnforced"
+            }
+          ]
+        },
         "PublicAccessBlockConfiguration": {
           "BlockPublicAcls": true,
           "BlockPublicPolicy": true,
@@ -237,28 +363,53 @@
             {
               "Id": "AbortIncompleteMultipartUploads",
               "Status": "Enabled",
-              "AbortIncompleteMultipartUpload": { "DaysAfterInitiation": 7 }
+              "AbortIncompleteMultipartUpload": {
+                "DaysAfterInitiation": 7
+              }
             },
             {
               "Id": "ExpireDatabaseBackups",
               "Status": "Enabled",
               "ExpirationInDays": 35,
-              "NoncurrentVersionExpiration": { "NoncurrentDays": 7, "NewerNoncurrentVersions": 2 }
+              "NoncurrentVersionExpiration": {
+                "NoncurrentDays": 7,
+                "NewerNoncurrentVersions": 2
+              }
             }
           ]
         },
         "Tags": [
-          { "Key": "Project", "Value": { "Ref": "ProjectName" } },
-          { "Key": "Environment", "Value": { "Ref": "EnvironmentName" } },
-          { "Key": "ManagedBy", "Value": "cloudformation" },
-          { "Key": "Owner", "Value": { "Ref": "OwnerTag" } }
+          {
+            "Key": "Project",
+            "Value": {
+              "Ref": "ProjectName"
+            }
+          },
+          {
+            "Key": "Environment",
+            "Value": {
+              "Ref": "EnvironmentName"
+            }
+          },
+          {
+            "Key": "ManagedBy",
+            "Value": "cloudformation"
+          },
+          {
+            "Key": "Owner",
+            "Value": {
+              "Ref": "OwnerTag"
+            }
+          }
         ]
       }
     },
     "BackupBucketPolicy": {
       "Type": "AWS::S3::BucketPolicy",
       "Properties": {
-        "Bucket": { "Ref": "BackupBucket" },
+        "Bucket": {
+          "Ref": "BackupBucket"
+        },
         "PolicyDocument": {
           "Version": "2012-10-17",
           "Statement": [
@@ -267,8 +418,22 @@
               "Effect": "Deny",
               "Principal": "*",
               "Action": "s3:*",
-              "Resource": [{ "Fn::GetAtt": ["BackupBucket", "Arn"] }, { "Fn::Sub": "${BackupBucket.Arn}/*" }],
-              "Condition": { "Bool": { "aws:SecureTransport": "false" } }
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "BackupBucket",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Sub": "${BackupBucket.Arn}/*"
+                }
+              ],
+              "Condition": {
+                "Bool": {
+                  "aws:SecureTransport": "false"
+                }
+              }
             }
           ]
         }
@@ -279,12 +444,28 @@
       "DeletionPolicy": "Retain",
       "UpdateReplacePolicy": "Retain",
       "Properties": {
-        "BucketName": { "Fn::Sub": "${ProjectName}-${EnvironmentName}-deployments-${AWS::AccountId}-${AWS::Region}" },
-        "BucketEncryption": {
-          "ServerSideEncryptionConfiguration": [{ "ServerSideEncryptionByDefault": { "SSEAlgorithm": "AES256" } }]
+        "BucketName": {
+          "Fn::Sub": "${ProjectName}-${EnvironmentName}-deployments-${AWS::AccountId}-${AWS::Region}"
         },
-        "VersioningConfiguration": { "Status": "Enabled" },
-        "OwnershipControls": { "Rules": [{ "ObjectOwnership": "BucketOwnerEnforced" }] },
+        "BucketEncryption": {
+          "ServerSideEncryptionConfiguration": [
+            {
+              "ServerSideEncryptionByDefault": {
+                "SSEAlgorithm": "AES256"
+              }
+            }
+          ]
+        },
+        "VersioningConfiguration": {
+          "Status": "Enabled"
+        },
+        "OwnershipControls": {
+          "Rules": [
+            {
+              "ObjectOwnership": "BucketOwnerEnforced"
+            }
+          ]
+        },
         "PublicAccessBlockConfiguration": {
           "BlockPublicAcls": true,
           "BlockPublicPolicy": true,
@@ -296,28 +477,53 @@
             {
               "Id": "AbortIncompleteDeploymentUploads",
               "Status": "Enabled",
-              "AbortIncompleteMultipartUpload": { "DaysAfterInitiation": 7 }
+              "AbortIncompleteMultipartUpload": {
+                "DaysAfterInitiation": 7
+              }
             },
             {
               "Id": "ExpireOldDeploymentStatus",
               "Status": "Enabled",
               "ExpirationInDays": 30,
-              "NoncurrentVersionExpiration": { "NoncurrentDays": 7, "NewerNoncurrentVersions": 5 }
+              "NoncurrentVersionExpiration": {
+                "NoncurrentDays": 7,
+                "NewerNoncurrentVersions": 5
+              }
             }
           ]
         },
         "Tags": [
-          { "Key": "Project", "Value": { "Ref": "ProjectName" } },
-          { "Key": "Environment", "Value": { "Ref": "EnvironmentName" } },
-          { "Key": "ManagedBy", "Value": "cloudformation" },
-          { "Key": "Owner", "Value": { "Ref": "OwnerTag" } }
+          {
+            "Key": "Project",
+            "Value": {
+              "Ref": "ProjectName"
+            }
+          },
+          {
+            "Key": "Environment",
+            "Value": {
+              "Ref": "EnvironmentName"
+            }
+          },
+          {
+            "Key": "ManagedBy",
+            "Value": "cloudformation"
+          },
+          {
+            "Key": "Owner",
+            "Value": {
+              "Ref": "OwnerTag"
+            }
+          }
         ]
       }
     },
     "DeploymentBucketPolicy": {
       "Type": "AWS::S3::BucketPolicy",
       "Properties": {
-        "Bucket": { "Ref": "DeploymentBucket" },
+        "Bucket": {
+          "Ref": "DeploymentBucket"
+        },
         "PolicyDocument": {
           "Version": "2012-10-17",
           "Statement": [
@@ -326,8 +532,22 @@
               "Effect": "Deny",
               "Principal": "*",
               "Action": "s3:*",
-              "Resource": [{ "Fn::GetAtt": ["DeploymentBucket", "Arn"] }, { "Fn::Sub": "${DeploymentBucket.Arn}/*" }],
-              "Condition": { "Bool": { "aws:SecureTransport": "false" } }
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "DeploymentBucket",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Sub": "${DeploymentBucket.Arn}/*"
+                }
+              ],
+              "Condition": {
+                "Bool": {
+                  "aws:SecureTransport": "false"
+                }
+              }
             }
           ]
         }
@@ -336,7 +556,9 @@
     "GitHubDevelopmentDeployRole": {
       "Type": "AWS::IAM::Role",
       "Properties": {
-        "RoleName": { "Fn::Sub": "${ProjectName}-${EnvironmentName}-github-deploy" },
+        "RoleName": {
+          "Fn::Sub": "${ProjectName}-${EnvironmentName}-github-deploy"
+        },
         "MaxSessionDuration": 3600,
         "AssumeRolePolicyDocument": {
           "Version": "2012-10-17",
@@ -344,16 +566,28 @@
             {
               "Sid": "GitHubDevelopmentTagWorkflowOnly",
               "Effect": "Allow",
-              "Principal": { "Federated": { "Ref": "GitHubOidcProviderArn" } },
+              "Principal": {
+                "Federated": {
+                  "Ref": "GitHubOidcProviderArn"
+                }
+              },
               "Action": "sts:AssumeRoleWithWebIdentity",
               "Condition": {
-                "StringEquals": { "token.actions.githubusercontent.com:aud": "sts.amazonaws.com" },
+                "StringEquals": {
+                  "token.actions.githubusercontent.com:aud": "sts.amazonaws.com"
+                },
                 "StringLike": {
                   "token.actions.githubusercontent.com:sub": [
-                    { "Fn::Sub": "repo:${GitHubRepository}:*" },
-                    { "Fn::Sub": "${GitHubImmutableSubjectPrefix}:*" }
+                    {
+                      "Fn::Sub": "repo:${GitHubRepository}:*"
+                    },
+                    {
+                      "Fn::Sub": "${GitHubImmutableSubjectPrefix}:*"
+                    }
                   ],
-                  "token.actions.githubusercontent.com:job_workflow_ref": { "Ref": "GitHubWorkflowRef" }
+                  "token.actions.githubusercontent.com:job_workflow_ref": {
+                    "Ref": "GitHubWorkflowRef"
+                  }
                 }
               }
             }
@@ -383,30 +617,57 @@
                     "ecr:PutImage",
                     "ecr:UploadLayerPart"
                   ],
-                  "Resource": { "Fn::GetAtt": ["ApplicationRepository", "Arn"] }
+                  "Resource": {
+                    "Fn::GetAtt": [
+                      "ApplicationRepository",
+                      "Arn"
+                    ]
+                  }
                 },
                 {
                   "Sid": "WriteOnlyDevelopmentDesiredState",
                   "Effect": "Allow",
                   "Action": "s3:PutObject",
-                  "Resource": { "Fn::Sub": "${DeploymentBucket.Arn}/desired.json" }
+                  "Resource": {
+                    "Fn::Sub": "${DeploymentBucket.Arn}/desired.json"
+                  }
                 }
               ]
             }
           }
         ],
         "Tags": [
-          { "Key": "Project", "Value": { "Ref": "ProjectName" } },
-          { "Key": "Environment", "Value": { "Ref": "EnvironmentName" } },
-          { "Key": "ManagedBy", "Value": "cloudformation" },
-          { "Key": "Owner", "Value": { "Ref": "OwnerTag" } }
+          {
+            "Key": "Project",
+            "Value": {
+              "Ref": "ProjectName"
+            }
+          },
+          {
+            "Key": "Environment",
+            "Value": {
+              "Ref": "EnvironmentName"
+            }
+          },
+          {
+            "Key": "ManagedBy",
+            "Value": "cloudformation"
+          },
+          {
+            "Key": "Owner",
+            "Value": {
+              "Ref": "OwnerTag"
+            }
+          }
         ]
       }
     },
     "ApplicationStorageUser": {
       "Type": "AWS::IAM::User",
       "Properties": {
-        "UserName": { "Fn::Sub": "${ProjectName}-${EnvironmentName}-storage" },
+        "UserName": {
+          "Fn::Sub": "${ProjectName}-${EnvironmentName}-storage"
+        },
         "Policies": [
           {
             "PolicyName": "PullDevelopmentImageStateAndMedia",
@@ -422,33 +683,63 @@
                 {
                   "Sid": "PullOnlyDevelopmentRepository",
                   "Effect": "Allow",
-                  "Action": ["ecr:BatchCheckLayerAvailability", "ecr:BatchGetImage", "ecr:GetDownloadUrlForLayer"],
-                  "Resource": { "Fn::GetAtt": ["ApplicationRepository", "Arn"] }
+                  "Action": [
+                    "ecr:BatchCheckLayerAvailability",
+                    "ecr:BatchGetImage",
+                    "ecr:GetDownloadUrlForLayer"
+                  ],
+                  "Resource": {
+                    "Fn::GetAtt": [
+                      "ApplicationRepository",
+                      "Arn"
+                    ]
+                  }
                 },
                 {
                   "Sid": "ReadDesiredStateOnly",
                   "Effect": "Allow",
                   "Action": "s3:GetObject",
-                  "Resource": { "Fn::Sub": "${DeploymentBucket.Arn}/desired.json" }
+                  "Resource": {
+                    "Fn::Sub": "${DeploymentBucket.Arn}/desired.json"
+                  }
                 },
                 {
                   "Sid": "WriteBoundedDeploymentStatus",
                   "Effect": "Allow",
                   "Action": "s3:PutObject",
-                  "Resource": { "Fn::Sub": "${DeploymentBucket.Arn}/status/*" }
+                  "Resource": {
+                    "Fn::Sub": "${DeploymentBucket.Arn}/status/*"
+                  }
                 },
                 {
                   "Sid": "GetDevelopmentMediaBucketLocation",
                   "Effect": "Allow",
                   "Action": "s3:GetBucketLocation",
-                  "Resource": { "Fn::GetAtt": ["MediaBucket", "Arn"] }
+                  "Resource": {
+                    "Fn::GetAtt": [
+                      "MediaBucket",
+                      "Arn"
+                    ]
+                  }
                 },
                 {
                   "Sid": "ListDevelopmentMediaPrefixOnly",
                   "Effect": "Allow",
                   "Action": "s3:ListBucket",
-                  "Resource": { "Fn::GetAtt": ["MediaBucket", "Arn"] },
-                  "Condition": { "StringLike": { "s3:prefix": ["media", "media/*"] } }
+                  "Resource": {
+                    "Fn::GetAtt": [
+                      "MediaBucket",
+                      "Arn"
+                    ]
+                  },
+                  "Condition": {
+                    "StringLike": {
+                      "s3:prefix": [
+                        "media",
+                        "media/*"
+                      ]
+                    }
+                  }
                 },
                 {
                   "Sid": "OperateOnDevelopmentMediaObjectsOnly",
@@ -460,29 +751,64 @@
                     "s3:ListMultipartUploadParts",
                     "s3:PutObject"
                   ],
-                  "Resource": { "Fn::Sub": "${MediaBucket.Arn}/media/*" }
+                  "Resource": {
+                    "Fn::Sub": "${MediaBucket.Arn}/media/*"
+                  }
                 },
                 {
                   "Sid": "ListDevelopmentBackups",
                   "Effect": "Allow",
-                  "Action": ["s3:GetBucketLocation", "s3:ListBucket"],
-                  "Resource": { "Fn::GetAtt": ["BackupBucket", "Arn"] }
+                  "Action": [
+                    "s3:GetBucketLocation",
+                    "s3:ListBucket"
+                  ],
+                  "Resource": {
+                    "Fn::GetAtt": [
+                      "BackupBucket",
+                      "Arn"
+                    ]
+                  }
                 },
                 {
                   "Sid": "ManageDevelopmentBackupObjects",
                   "Effect": "Allow",
-                  "Action": ["s3:AbortMultipartUpload", "s3:GetObject", "s3:ListMultipartUploadParts", "s3:PutObject"],
-                  "Resource": { "Fn::Sub": "${BackupBucket.Arn}/*" }
+                  "Action": [
+                    "s3:AbortMultipartUpload",
+                    "s3:GetObject",
+                    "s3:ListMultipartUploadParts",
+                    "s3:PutObject"
+                  ],
+                  "Resource": {
+                    "Fn::Sub": "${BackupBucket.Arn}/*"
+                  }
                 }
               ]
             }
           }
         ],
         "Tags": [
-          { "Key": "Project", "Value": { "Ref": "ProjectName" } },
-          { "Key": "Environment", "Value": { "Ref": "EnvironmentName" } },
-          { "Key": "ManagedBy", "Value": "cloudformation" },
-          { "Key": "Owner", "Value": { "Ref": "OwnerTag" } }
+          {
+            "Key": "Project",
+            "Value": {
+              "Ref": "ProjectName"
+            }
+          },
+          {
+            "Key": "Environment",
+            "Value": {
+              "Ref": "EnvironmentName"
+            }
+          },
+          {
+            "Key": "ManagedBy",
+            "Value": "cloudformation"
+          },
+          {
+            "Key": "Owner",
+            "Value": {
+              "Ref": "OwnerTag"
+            }
+          }
         ]
       }
     },
@@ -491,15 +817,27 @@
       "DeletionPolicy": "Retain",
       "UpdateReplacePolicy": "Retain",
       "Properties": {
-        "InstanceName": { "Fn::Sub": "${ProjectName}-${EnvironmentName}-app" },
-        "AvailabilityZone": { "Ref": "AvailabilityZone" },
-        "BlueprintId": { "Ref": "BlueprintId" },
-        "BundleId": { "Ref": "BundleId" },
-        "KeyPairName": { "Ref": "KeyPairName" },
+        "InstanceName": {
+          "Fn::Sub": "${ProjectName}-${EnvironmentName}-app"
+        },
+        "AvailabilityZone": {
+          "Ref": "AvailabilityZone"
+        },
+        "BlueprintId": {
+          "Ref": "BlueprintId"
+        },
+        "BundleId": {
+          "Ref": "BundleId"
+        },
+        "KeyPairName": {
+          "Ref": "KeyPairName"
+        },
         "AddOns": [
           {
             "AddOnType": "AutoSnapshot",
-            "AutoSnapshotAddOnRequest": { "SnapshotTimeOfDay": "18:00" },
+            "AutoSnapshotAddOnRequest": {
+              "SnapshotTimeOfDay": "18:00"
+            },
             "Status": "Enabled"
           }
         ],
@@ -509,8 +847,14 @@
               "AccessDirection": "inbound",
               "AccessFrom": "Custom",
               "AccessType": "Public",
-              "CidrListAliases": ["lightsail-connect"],
-              "Cidrs": [{ "Ref": "SshCidr" }],
+              "CidrListAliases": [
+                "lightsail-connect"
+              ],
+              "Cidrs": [
+                {
+                  "Ref": "SshCidr"
+                }
+              ],
               "CommonName": "SSH",
               "FromPort": 22,
               "Protocol": "tcp",
@@ -520,7 +864,9 @@
               "AccessDirection": "inbound",
               "AccessFrom": "Anywhere (0.0.0.0/0)",
               "AccessType": "Public",
-              "Cidrs": ["0.0.0.0/0"],
+              "Cidrs": [
+                "0.0.0.0/0"
+              ],
               "CommonName": "HTTP",
               "FromPort": 80,
               "Protocol": "tcp",
@@ -530,7 +876,9 @@
               "AccessDirection": "inbound",
               "AccessFrom": "Anywhere (0.0.0.0/0)",
               "AccessType": "Public",
-              "Cidrs": ["0.0.0.0/0"],
+              "Cidrs": [
+                "0.0.0.0/0"
+              ],
               "CommonName": "HTTPS",
               "FromPort": 443,
               "Protocol": "tcp",
@@ -540,10 +888,28 @@
         },
         "UserData": "#!/usr/bin/env bash\nset -euo pipefail\nexport DEBIAN_FRONTEND=noninteractive\n\napt-get update\napt-get install -y --no-install-recommends \\\n  ca-certificates \\\n  curl \\\n  docker-compose-v2 \\\n  docker.io \\\n  fail2ban \\\n  jq \\\n  openssl \\\n  unattended-upgrades\n\nsystemctl enable --now docker\nsystemctl enable --now fail2ban\nsystemctl enable --now unattended-upgrades\nusermod -aG docker ubuntu\n\ninstall -d -m 0750 -o root -g docker /opt/mmdc\ninstall -d -m 0750 -o root -g docker /opt/mmdc/backups\ninstall -d -m 0750 -o root -g docker /opt/mmdc/bin\ninstall -d -m 0750 -o root -g docker /opt/mmdc/imports\ninstall -d -m 0750 -o root -g docker /opt/mmdc/secrets\ntouch /var/lib/cloud/instance/mmdc-base-ready\n",
         "Tags": [
-          { "Key": "Project", "Value": { "Ref": "ProjectName" } },
-          { "Key": "Environment", "Value": { "Ref": "EnvironmentName" } },
-          { "Key": "ManagedBy", "Value": "cloudformation" },
-          { "Key": "Owner", "Value": { "Ref": "OwnerTag" } }
+          {
+            "Key": "Project",
+            "Value": {
+              "Ref": "ProjectName"
+            }
+          },
+          {
+            "Key": "Environment",
+            "Value": {
+              "Ref": "EnvironmentName"
+            }
+          },
+          {
+            "Key": "ManagedBy",
+            "Value": "cloudformation"
+          },
+          {
+            "Key": "Owner",
+            "Value": {
+              "Ref": "OwnerTag"
+            }
+          }
         ]
       }
     },
@@ -552,15 +918,27 @@
       "DeletionPolicy": "Retain",
       "UpdateReplacePolicy": "Retain",
       "Properties": {
-        "InstanceName": { "Fn::Sub": "${ProjectName}-${EnvironmentName}-app-02" },
-        "AvailabilityZone": { "Ref": "AvailabilityZone" },
-        "BlueprintId": { "Ref": "BlueprintId" },
-        "BundleId": { "Ref": "BundleId" },
-        "KeyPairName": { "Ref": "KeyPairName" },
+        "InstanceName": {
+          "Fn::Sub": "${ProjectName}-${EnvironmentName}-app-02"
+        },
+        "AvailabilityZone": {
+          "Ref": "AvailabilityZone"
+        },
+        "BlueprintId": {
+          "Ref": "BlueprintId"
+        },
+        "BundleId": {
+          "Ref": "BundleId"
+        },
+        "KeyPairName": {
+          "Ref": "KeyPairName"
+        },
         "AddOns": [
           {
             "AddOnType": "AutoSnapshot",
-            "AutoSnapshotAddOnRequest": { "SnapshotTimeOfDay": "18:00" },
+            "AutoSnapshotAddOnRequest": {
+              "SnapshotTimeOfDay": "18:00"
+            },
             "Status": "Enabled"
           }
         ],
@@ -570,8 +948,14 @@
               "AccessDirection": "inbound",
               "AccessFrom": "Custom",
               "AccessType": "Public",
-              "CidrListAliases": ["lightsail-connect"],
-              "Cidrs": [{ "Ref": "SshCidr" }],
+              "CidrListAliases": [
+                "lightsail-connect"
+              ],
+              "Cidrs": [
+                {
+                  "Ref": "SshCidr"
+                }
+              ],
               "CommonName": "SSH",
               "FromPort": 22,
               "Protocol": "tcp",
@@ -581,7 +965,9 @@
               "AccessDirection": "inbound",
               "AccessFrom": "Anywhere (0.0.0.0/0)",
               "AccessType": "Public",
-              "Cidrs": ["0.0.0.0/0"],
+              "Cidrs": [
+                "0.0.0.0/0"
+              ],
               "CommonName": "HTTP",
               "FromPort": 80,
               "Protocol": "tcp",
@@ -591,7 +977,9 @@
               "AccessDirection": "inbound",
               "AccessFrom": "Anywhere (0.0.0.0/0)",
               "AccessType": "Public",
-              "Cidrs": ["0.0.0.0/0"],
+              "Cidrs": [
+                "0.0.0.0/0"
+              ],
               "CommonName": "HTTPS",
               "FromPort": 443,
               "Protocol": "tcp",
@@ -601,35 +989,70 @@
         },
         "UserData": "#!/usr/bin/env bash\nset -euo pipefail\nexport DEBIAN_FRONTEND=noninteractive\n\napt-get update\napt-get install -y --no-install-recommends \\\n  ca-certificates \\\n  curl \\\n  docker-compose-v2 \\\n  docker.io \\\n  fail2ban \\\n  jq \\\n  openssl \\\n  unattended-upgrades\n\nsystemctl enable --now docker\nsystemctl enable --now fail2ban\nsystemctl enable --now unattended-upgrades\nusermod -aG docker ubuntu\n\ninstall -d -m 0750 -o root -g docker /opt/mmdc\ninstall -d -m 0750 -o root -g docker /opt/mmdc/backups\ninstall -d -m 0750 -o root -g docker /opt/mmdc/bin\ninstall -d -m 0750 -o root -g docker /opt/mmdc/imports\ninstall -d -m 0750 -o root -g docker /opt/mmdc/secrets\ntouch /var/lib/cloud/instance/mmdc-base-ready\n",
         "Tags": [
-          { "Key": "Project", "Value": { "Ref": "ProjectName" } },
-          { "Key": "Environment", "Value": { "Ref": "EnvironmentName" } },
-          { "Key": "ManagedBy", "Value": "cloudformation" },
-          { "Key": "Owner", "Value": { "Ref": "OwnerTag" } }
+          {
+            "Key": "Project",
+            "Value": {
+              "Ref": "ProjectName"
+            }
+          },
+          {
+            "Key": "Environment",
+            "Value": {
+              "Ref": "EnvironmentName"
+            }
+          },
+          {
+            "Key": "ManagedBy",
+            "Value": "cloudformation"
+          },
+          {
+            "Key": "Owner",
+            "Value": {
+              "Ref": "OwnerTag"
+            }
+          }
         ]
       }
     },
     "DevelopmentStaticIp": {
       "Type": "AWS::Lightsail::StaticIp",
       "Properties": {
-        "StaticIpName": { "Fn::Sub": "${ProjectName}-${EnvironmentName}-ip" },
-        "AttachedTo": { "Ref": "DevelopmentInstance" }
+        "StaticIpName": {
+          "Fn::Sub": "${ProjectName}-${EnvironmentName}-ip"
+        },
+        "AttachedTo": {
+          "Ref": "DevelopmentInstance"
+        }
       }
     },
     "DevelopmentStaticIpAdditional": {
       "Type": "AWS::Lightsail::StaticIp",
       "Properties": {
-        "StaticIpName": { "Fn::Sub": "${ProjectName}-${EnvironmentName}-ip-02" },
-        "AttachedTo": { "Ref": "DevelopmentInstanceAdditional" }
+        "StaticIpName": {
+          "Fn::Sub": "${ProjectName}-${EnvironmentName}-ip-02"
+        },
+        "AttachedTo": {
+          "Ref": "DevelopmentInstanceAdditional"
+        }
       }
     },
     "DevelopmentCpuAlarm": {
       "Type": "AWS::CloudWatch::Alarm",
       "Properties": {
-        "AlarmName": { "Fn::Sub": "${ProjectName}-${EnvironmentName}-lightsail-cpu-high" },
+        "AlarmName": {
+          "Fn::Sub": "${ProjectName}-${EnvironmentName}-lightsail-cpu-high"
+        },
         "AlarmDescription": "Development host CPU is high; notification wiring requires the approved observability decision.",
         "Namespace": "AWS/Lightsail",
         "MetricName": "CPUUtilization",
-        "Dimensions": [{ "Name": "InstanceName", "Value": { "Ref": "DevelopmentInstance" } }],
+        "Dimensions": [
+          {
+            "Name": "InstanceName",
+            "Value": {
+              "Ref": "DevelopmentInstance"
+            }
+          }
+        ],
         "Statistic": "Average",
         "Period": 300,
         "EvaluationPeriods": 2,
@@ -637,21 +1060,48 @@
         "ComparisonOperator": "GreaterThanThreshold",
         "TreatMissingData": "notBreaching",
         "Tags": [
-          { "Key": "Project", "Value": { "Ref": "ProjectName" } },
-          { "Key": "Environment", "Value": { "Ref": "EnvironmentName" } },
-          { "Key": "ManagedBy", "Value": "cloudformation" },
-          { "Key": "Owner", "Value": { "Ref": "OwnerTag" } }
+          {
+            "Key": "Project",
+            "Value": {
+              "Ref": "ProjectName"
+            }
+          },
+          {
+            "Key": "Environment",
+            "Value": {
+              "Ref": "EnvironmentName"
+            }
+          },
+          {
+            "Key": "ManagedBy",
+            "Value": "cloudformation"
+          },
+          {
+            "Key": "Owner",
+            "Value": {
+              "Ref": "OwnerTag"
+            }
+          }
         ]
       }
     },
     "DevelopmentBurstCapacityAlarm": {
       "Type": "AWS::CloudWatch::Alarm",
       "Properties": {
-        "AlarmName": { "Fn::Sub": "${ProjectName}-${EnvironmentName}-lightsail-burst-low" },
+        "AlarmName": {
+          "Fn::Sub": "${ProjectName}-${EnvironmentName}-lightsail-burst-low"
+        },
         "AlarmDescription": "Development host burst capacity is low; notification wiring requires the approved observability decision.",
         "Namespace": "AWS/Lightsail",
         "MetricName": "BurstCapacityPercentage",
-        "Dimensions": [{ "Name": "InstanceName", "Value": { "Ref": "DevelopmentInstance" } }],
+        "Dimensions": [
+          {
+            "Name": "InstanceName",
+            "Value": {
+              "Ref": "DevelopmentInstance"
+            }
+          }
+        ],
         "Statistic": "Average",
         "Period": 300,
         "EvaluationPeriods": 2,
@@ -659,10 +1109,28 @@
         "ComparisonOperator": "LessThanThreshold",
         "TreatMissingData": "notBreaching",
         "Tags": [
-          { "Key": "Project", "Value": { "Ref": "ProjectName" } },
-          { "Key": "Environment", "Value": { "Ref": "EnvironmentName" } },
-          { "Key": "ManagedBy", "Value": "cloudformation" },
-          { "Key": "Owner", "Value": { "Ref": "OwnerTag" } }
+          {
+            "Key": "Project",
+            "Value": {
+              "Ref": "ProjectName"
+            }
+          },
+          {
+            "Key": "Environment",
+            "Value": {
+              "Ref": "EnvironmentName"
+            }
+          },
+          {
+            "Key": "ManagedBy",
+            "Value": "cloudformation"
+          },
+          {
+            "Key": "Owner",
+            "Value": {
+              "Ref": "OwnerTag"
+            }
+          }
         ]
       }
     },
@@ -678,7 +1146,9 @@
           "Origins": [
             {
               "Id": "DevelopmentLightsailOrigin",
-              "DomainName": { "Ref": "DevelopmentOriginHostname" },
+              "DomainName": {
+                "Ref": "DevelopmentOriginHostname"
+              },
               "CustomOriginConfig": {
                 "HTTPPort": 80,
                 "HTTPSPort": 443,
@@ -689,18 +1159,55 @@
           "DefaultCacheBehavior": {
             "TargetOriginId": "DevelopmentLightsailOrigin",
             "ViewerProtocolPolicy": "redirect-to-https",
-            "AllowedMethods": ["GET", "HEAD", "OPTIONS", "PUT", "POST", "PATCH", "DELETE"],
-            "CachedMethods": ["GET", "HEAD", "OPTIONS"],
-            "ForwardedValues": { "QueryString": true, "Cookies": { "Forward": "all" } },
+            "AllowedMethods": [
+              "GET",
+              "HEAD",
+              "OPTIONS",
+              "PUT",
+              "POST",
+              "PATCH",
+              "DELETE"
+            ],
+            "CachedMethods": [
+              "GET",
+              "HEAD",
+              "OPTIONS"
+            ],
+            "ForwardedValues": {
+              "QueryString": true,
+              "Cookies": {
+                "Forward": "all"
+              }
+            },
             "Compress": true
           },
-          "ViewerCertificate": { "CloudFrontDefaultCertificate": true }
+          "ViewerCertificate": {
+            "CloudFrontDefaultCertificate": true
+          }
         },
         "Tags": [
-          { "Key": "Project", "Value": { "Ref": "ProjectName" } },
-          { "Key": "Environment", "Value": { "Ref": "EnvironmentName" } },
-          { "Key": "ManagedBy", "Value": "cloudformation" },
-          { "Key": "Owner", "Value": { "Ref": "OwnerTag" } }
+          {
+            "Key": "Project",
+            "Value": {
+              "Ref": "ProjectName"
+            }
+          },
+          {
+            "Key": "Environment",
+            "Value": {
+              "Ref": "EnvironmentName"
+            }
+          },
+          {
+            "Key": "ManagedBy",
+            "Value": "cloudformation"
+          },
+          {
+            "Key": "Owner",
+            "Value": {
+              "Ref": "OwnerTag"
+            }
+          }
         ]
       }
     },
@@ -708,60 +1215,429 @@
       "Condition": "DevelopmentEdgeEnabled",
       "Type": "AWS::Route53::RecordSet",
       "Properties": {
-        "HostedZoneId": { "Ref": "HostedZoneId" },
-        "Name": { "Ref": "DevelopmentHostname" },
+        "HostedZoneId": {
+          "Ref": "HostedZoneId"
+        },
+        "Name": {
+          "Ref": "DevelopmentHostname"
+        },
         "Type": "A",
         "AliasTarget": {
-          "DNSName": { "Fn::GetAtt": ["DevelopmentCloudFrontDistribution", "DomainName"] },
+          "DNSName": {
+            "Fn::GetAtt": [
+              "DevelopmentCloudFrontDistribution",
+              "DomainName"
+            ]
+          },
           "HostedZoneId": "Z2FDTNDATAQYW2"
         }
+      }
+    },
+    "CoreApplicationRepository": {
+      "Type": "AWS::ECR::Repository",
+      "DeletionPolicy": "Retain",
+      "UpdateReplacePolicy": "Retain",
+      "Properties": {
+        "RepositoryName": {
+          "Fn::Sub": "mmdc-core-${EnvironmentName}"
+        },
+        "ImageTagMutability": "IMMUTABLE",
+        "ImageScanningConfiguration": {
+          "ScanOnPush": true
+        },
+        "EncryptionConfiguration": {
+          "EncryptionType": "AES256"
+        },
+        "LifecyclePolicy": {
+          "LifecyclePolicyText": "{\"rules\":[{\"rulePriority\":1,\"description\":\"Retain the 30 most recent development images\",\"selection\":{\"tagStatus\":\"any\",\"countType\":\"imageCountMoreThan\",\"countNumber\":30},\"action\":{\"type\":\"expire\"}}]}"
+        },
+        "RepositoryPolicyText": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Sid": "DenyInsecureTransport",
+              "Effect": "Deny",
+              "Principal": "*",
+              "Action": "ecr:*",
+              "Condition": {
+                "Bool": {
+                  "aws:SecureTransport": "false"
+                }
+              }
+            },
+            {
+              "Sid": "AllowDevelopmentHostPull",
+              "Effect": "Allow",
+              "Principal": {
+                "AWS": {
+                  "Fn::GetAtt": [
+                    "ApplicationStorageUser",
+                    "Arn"
+                  ]
+                }
+              },
+              "Action": [
+                "ecr:BatchCheckLayerAvailability",
+                "ecr:BatchGetImage",
+                "ecr:GetDownloadUrlForLayer"
+              ]
+            }
+          ]
+        },
+        "Tags": [
+          {
+            "Key": "Project",
+            "Value": "mmdc-core"
+          },
+          {
+            "Key": "Environment",
+            "Value": {
+              "Ref": "EnvironmentName"
+            }
+          },
+          {
+            "Key": "ManagedBy",
+            "Value": "cloudformation"
+          },
+          {
+            "Key": "Owner",
+            "Value": {
+              "Ref": "OwnerTag"
+            }
+          }
+        ]
+      }
+    },
+    "CoreDeploymentBucket": {
+      "Type": "AWS::S3::Bucket",
+      "DeletionPolicy": "Retain",
+      "UpdateReplacePolicy": "Retain",
+      "Properties": {
+        "BucketName": {
+          "Fn::Sub": "mmdc-core-${EnvironmentName}-deployments-${AWS::AccountId}-${AWS::Region}"
+        },
+        "BucketEncryption": {
+          "ServerSideEncryptionConfiguration": [
+            {
+              "ServerSideEncryptionByDefault": {
+                "SSEAlgorithm": "AES256"
+              }
+            }
+          ]
+        },
+        "VersioningConfiguration": {
+          "Status": "Enabled"
+        },
+        "OwnershipControls": {
+          "Rules": [
+            {
+              "ObjectOwnership": "BucketOwnerEnforced"
+            }
+          ]
+        },
+        "PublicAccessBlockConfiguration": {
+          "BlockPublicAcls": true,
+          "BlockPublicPolicy": true,
+          "IgnorePublicAcls": true,
+          "RestrictPublicBuckets": true
+        },
+        "LifecycleConfiguration": {
+          "Rules": [
+            {
+              "Id": "AbortIncompleteDeploymentUploads",
+              "Status": "Enabled",
+              "AbortIncompleteMultipartUpload": {
+                "DaysAfterInitiation": 7
+              }
+            },
+            {
+              "Id": "ExpireOldDeploymentStatus",
+              "Status": "Enabled",
+              "ExpirationInDays": 30,
+              "NoncurrentVersionExpiration": {
+                "NoncurrentDays": 7,
+                "NewerNoncurrentVersions": 5
+              }
+            }
+          ]
+        },
+        "Tags": [
+          {
+            "Key": "Project",
+            "Value": "mmdc-core"
+          },
+          {
+            "Key": "Environment",
+            "Value": {
+              "Ref": "EnvironmentName"
+            }
+          },
+          {
+            "Key": "ManagedBy",
+            "Value": "cloudformation"
+          },
+          {
+            "Key": "Owner",
+            "Value": {
+              "Ref": "OwnerTag"
+            }
+          }
+        ]
+      }
+    },
+    "CoreDeploymentBucketPolicy": {
+      "Type": "AWS::S3::BucketPolicy",
+      "Properties": {
+        "Bucket": {
+          "Ref": "CoreDeploymentBucket"
+        },
+        "PolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Sid": "DenyInsecureTransport",
+              "Effect": "Deny",
+              "Principal": "*",
+              "Action": "s3:*",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "CoreDeploymentBucket",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Sub": "${CoreDeploymentBucket.Arn}/*"
+                }
+              ],
+              "Condition": {
+                "Bool": {
+                  "aws:SecureTransport": "false"
+                }
+              }
+            },
+            {
+              "Sid": "AllowDevelopmentHostReadDesiredState",
+              "Effect": "Allow",
+              "Principal": {
+                "AWS": {
+                  "Fn::GetAtt": [
+                    "ApplicationStorageUser",
+                    "Arn"
+                  ]
+                }
+              },
+              "Action": "s3:GetObject",
+              "Resource": {
+                "Fn::Sub": "${CoreDeploymentBucket.Arn}/desired.json"
+              }
+            },
+            {
+              "Sid": "AllowDevelopmentHostWriteStatus",
+              "Effect": "Allow",
+              "Principal": {
+                "AWS": {
+                  "Fn::GetAtt": [
+                    "ApplicationStorageUser",
+                    "Arn"
+                  ]
+                }
+              },
+              "Action": "s3:PutObject",
+              "Resource": {
+                "Fn::Sub": "${CoreDeploymentBucket.Arn}/status/*"
+              }
+            }
+          ]
+        }
+      }
+    },
+    "CoreGitHubDeployRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "RoleName": {
+          "Fn::Sub": "mmdc-core-${EnvironmentName}-github-deploy"
+        },
+        "MaxSessionDuration": 3600,
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Sid": "GitHubDevelopmentTagWorkflowOnly",
+              "Effect": "Allow",
+              "Principal": {
+                "Federated": {
+                  "Ref": "GitHubOidcProviderArn"
+                }
+              },
+              "Action": "sts:AssumeRoleWithWebIdentity",
+              "Condition": {
+                "StringEquals": {
+                  "token.actions.githubusercontent.com:aud": "sts.amazonaws.com"
+                },
+                "StringLike": {
+                  "token.actions.githubusercontent.com:sub": [
+                    {
+                      "Fn::Sub": "repo:${GitHubRepository}:*"
+                    },
+                    {
+                      "Fn::Sub": "${GitHubImmutableSubjectPrefix}:*"
+                    }
+                  ],
+                  "token.actions.githubusercontent.com:job_workflow_ref": {
+                    "Ref": "GitHubWorkflowRef"
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "Policies": [
+          {
+            "PolicyName": "PublishCoreDevelopmentImageAndDesiredState",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Sid": "EcrTokenForAwsRegistry",
+                  "Effect": "Allow",
+                  "Action": "ecr:GetAuthorizationToken",
+                  "Resource": "*"
+                },
+                {
+                  "Sid": "PublishOnlyCoreDevelopmentRepository",
+                  "Effect": "Allow",
+                  "Action": [
+                    "ecr:BatchCheckLayerAvailability",
+                    "ecr:CompleteLayerUpload",
+                    "ecr:DescribeImages",
+                    "ecr:DescribeRepositories",
+                    "ecr:InitiateLayerUpload",
+                    "ecr:PutImage",
+                    "ecr:UploadLayerPart"
+                  ],
+                  "Resource": {
+                    "Fn::GetAtt": [
+                      "CoreApplicationRepository",
+                      "Arn"
+                    ]
+                  }
+                },
+                {
+                  "Sid": "WriteOnlyCoreDevelopmentDesiredState",
+                  "Effect": "Allow",
+                  "Action": "s3:PutObject",
+                  "Resource": {
+                    "Fn::Sub": "${CoreDeploymentBucket.Arn}/desired.json"
+                  }
+                }
+              ]
+            }
+          }
+        ],
+        "Tags": [
+          {
+            "Key": "Project",
+            "Value": "mmdc-core"
+          },
+          {
+            "Key": "Environment",
+            "Value": {
+              "Ref": "EnvironmentName"
+            }
+          },
+          {
+            "Key": "ManagedBy",
+            "Value": "cloudformation"
+          },
+          {
+            "Key": "Owner",
+            "Value": {
+              "Ref": "OwnerTag"
+            }
+          }
+        ]
       }
     }
   },
   "Outputs": {
     "InstanceName": {
       "Description": "Existing development Lightsail instance name.",
-      "Value": { "Ref": "DevelopmentInstance" }
+      "Value": {
+        "Ref": "DevelopmentInstance"
+      }
     },
     "InstancePublicIp": {
       "Description": "Existing development Lightsail static public IP.",
-      "Value": { "Fn::GetAtt": ["DevelopmentStaticIp", "IpAddress"] }
+      "Value": {
+        "Fn::GetAtt": [
+          "DevelopmentStaticIp",
+          "IpAddress"
+        ]
+      }
     },
     "AdditionalInstanceName": {
       "Description": "New additive development Lightsail instance name.",
-      "Value": { "Ref": "DevelopmentInstanceAdditional" }
+      "Value": {
+        "Ref": "DevelopmentInstanceAdditional"
+      }
     },
     "AdditionalInstancePublicIp": {
       "Description": "New additive development Lightsail static public IP.",
-      "Value": { "Fn::GetAtt": ["DevelopmentStaticIpAdditional", "IpAddress"] }
+      "Value": {
+        "Fn::GetAtt": [
+          "DevelopmentStaticIpAdditional",
+          "IpAddress"
+        ]
+      }
     },
     "ApplicationRepositoryUri": {
       "Description": "Private development ECR repository URI.",
-      "Value": { "Fn::GetAtt": ["ApplicationRepository", "RepositoryUri"] }
+      "Value": {
+        "Fn::GetAtt": [
+          "ApplicationRepository",
+          "RepositoryUri"
+        ]
+      }
     },
     "MediaBucketName": {
       "Description": "Private development media bucket name.",
-      "Value": { "Ref": "MediaBucket" }
+      "Value": {
+        "Ref": "MediaBucket"
+      }
     },
     "BackupBucketName": {
       "Description": "Private development backup bucket name.",
-      "Value": { "Ref": "BackupBucket" }
+      "Value": {
+        "Ref": "BackupBucket"
+      }
     },
     "DeploymentBucketName": {
       "Description": "Private development deployment-state bucket name.",
-      "Value": { "Ref": "DeploymentBucket" }
+      "Value": {
+        "Ref": "DeploymentBucket"
+      }
     },
     "GitHubDevelopmentDeployRoleArn": {
       "Description": "Constrained GitHub OIDC publisher role ARN.",
-      "Value": { "Fn::GetAtt": ["GitHubDevelopmentDeployRole", "Arn"] }
+      "Value": {
+        "Fn::GetAtt": [
+          "GitHubDevelopmentDeployRole",
+          "Arn"
+        ]
+      }
     },
     "ApplicationStorageUserName": {
       "Description": "Scoped host workload IAM user name; access keys are created only by the approved bootstrap procedure.",
-      "Value": { "Ref": "ApplicationStorageUser" }
+      "Value": {
+        "Ref": "ApplicationStorageUser"
+      }
     },
     "SshCommand": {
       "Description": "Restricted operator connection command.",
-      "Value": { "Fn::Sub": "ssh ubuntu@${DevelopmentStaticIp.IpAddress}" }
+      "Value": {
+        "Fn::Sub": "ssh ubuntu@${DevelopmentStaticIp.IpAddress}"
+      }
     },
     "MonthlyPlanningCostEstimate": {
       "Description": "Planning estimate only; not a provider quote or approval to provision.",
@@ -769,7 +1645,9 @@
     },
     "ApprovedRegion": {
       "Description": "Region guard applied by the template.",
-      "Value": { "Ref": "AWS::Region" }
+      "Value": {
+        "Ref": "AWS::Region"
+      }
     }
   }
 }

@@ -18,9 +18,9 @@ concurrency:
 
 env:
   AWS_REGION: ap-southeast-1
-  ECR_REPOSITORY: 349762920349.dkr.ecr.ap-southeast-1.amazonaws.com/mmdc-v3-development
-  DEPLOYMENT_BUCKET: mmdc-v3-development-deployments-349762920349-ap-southeast-1
-  AWS_ROLE_ARN: arn:aws:iam::349762920349:role/mmdc-v3-development-github-deploy
+  ECR_REPOSITORY: 349762920349.dkr.ecr.ap-southeast-1.amazonaws.com/mmdc-core-development
+  DEPLOYMENT_BUCKET: mmdc-core-development-deployments-349762920349-ap-southeast-1
+  AWS_ROLE_ARN: arn:aws:iam::349762920349:role/mmdc-core-development-github-deploy
 
 jobs:
   quality:
@@ -119,7 +119,7 @@ jobs:
         env:
           RELEASE_TAG: ${{ github.ref_name }}
         run: |
-          if aws ecr describe-images --repository-name mmdc-v3-development --image-ids imageTag="$RELEASE_TAG" >/dev/null 2>&1; then
+          if aws ecr describe-images --repository-name mmdc-core-development --image-ids imageTag="$RELEASE_TAG" >/dev/null 2>&1; then
             echo 'semantic release tag already exists in immutable ECR; refusing reuse'
             exit 1
           fi
@@ -139,7 +139,7 @@ jobs:
         env:
           RELEASE_TAG: ${{ github.ref_name }}
         run: |
-          digest="$(aws ecr describe-images --repository-name mmdc-v3-development --image-ids imageTag="$GITHUB_SHA" --query 'imageDetails[0].imageDigest' --output text)"
+          digest="$(aws ecr describe-images --repository-name mmdc-core-development --image-ids imageTag="$GITHUB_SHA" --query 'imageDetails[0].imageDigest' --output text)"
           printf '%s\n' "$digest" | grep -E '^sha256:[0-9a-f]{64}$'
           printf '%s\n' "$digest" > .artifacts/release/image.digest
           docker buildx imagetools create --tag "$ECR_REPOSITORY:$RELEASE_TAG" "$ECR_REPOSITORY@$digest"

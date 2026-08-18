@@ -20,7 +20,10 @@
         "ecr:TagResource",
         "ecr:UntagResource"
       ],
-      "Resource": "arn:aws:ecr:ap-southeast-1:349762920349:repository/mmdc-v3-development"
+      "Resource": [
+        "arn:aws:ecr:ap-southeast-1:349762920349:repository/mmdc-v3-development",
+        "arn:aws:ecr:ap-southeast-1:349762920349:repository/mmdc-core-development"
+      ]
     },
     {
       "Sid": "ManageDevelopmentBuckets",
@@ -48,7 +51,8 @@
       "Resource": [
         "arn:aws:s3:::mmdc-v3-development-media-349762920349-ap-southeast-1",
         "arn:aws:s3:::mmdc-v3-development-backups-349762920349-ap-southeast-1",
-        "arn:aws:s3:::mmdc-v3-development-deployments-349762920349-ap-southeast-1"
+        "arn:aws:s3:::mmdc-v3-development-deployments-349762920349-ap-southeast-1",
+        "arn:aws:s3:::mmdc-core-development-deployments-349762920349-ap-southeast-1"
       ]
     },
     {
@@ -80,7 +84,8 @@
       ],
       "Resource": [
         "arn:aws:iam::349762920349:role/mmdc-v3-development-github-deploy",
-        "arn:aws:iam::349762920349:user/mmdc-v3-development-storage"
+        "arn:aws:iam::349762920349:user/mmdc-v3-development-storage",
+        "arn:aws:iam::349762920349:role/mmdc-core-development-github-deploy"
       ]
     },
     {

@@ -66,7 +66,11 @@ for (const [logicalId, resource] of Object.entries(resources)) {
   if (!untaggableTypes.has(resource.Type)) {
     const tags = Object.fromEntries((resource.Properties.Tags ?? []).map(({ Key, Value }) => [Key, Value]));
     for (const [key, value] of Object.entries(requiredTags)) {
-      assert.deepEqual(tags[key], value, `${logicalId} carries the ${key} tag`);
+      // `Core*` resources are the mmdc-core namespace carved out of this
+      // stack, so they carry a literal `mmdc-core` Project tag rather than
+      // the stack-wide `ProjectName` (`mmdc-v3`) they sit beside.
+      const expected = key === 'Project' && logicalId.startsWith('Core') ? 'mmdc-core' : value;
+      assert.deepEqual(tags[key], expected, `${logicalId} carries the ${key} tag`);
     }
   }
 }
@@ -530,7 +534,7 @@ assert.match(releaseWorkflow, /on:\n  push:\n    tags:\n      - ['"]v\*\.\*\.\*-
 // trigger, the in-job tag/ancestry validation, and `job_workflow_ref`.
 assert.doesNotMatch(releaseWorkflow, /environment: development/);
 assert.match(releaseWorkflow, /publish:[\s\S]*?id-token: write/);
-assert.match(releaseWorkflow, /AWS_ROLE_ARN: arn:aws:iam::349762920349:role\/mmdc-v3-development-github-deploy/);
+assert.match(releaseWorkflow, /AWS_ROLE_ARN: arn:aws:iam::349762920349:role\/mmdc-core-development-github-deploy/);
 // These are the claims GitHub actually presents for the protected `publish`
 // job on a `v*.*.*-dev.*` tag push, not a hand-written approximation.
 const releaseClaims = {
