@@ -53,7 +53,6 @@ jobs:
     name: publish-development-release
     needs: quality
     if: github.event_name == 'push' && github.ref_type == 'tag'
-    environment: development
     permissions:
       contents: read
       id-token: write

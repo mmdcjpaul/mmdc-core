@@ -523,7 +523,12 @@ assert.equal(
 assert.equal(trustedWorkflow, refs.GitHubWorkflowRef, 'OIDC trust requires the exact approved workflow ref');
 const releaseWorkflow = readFileSync('.github/workflows/release.yml', 'utf8');
 assert.match(releaseWorkflow, /on:\n  push:\n    tags:\n      - ['"]v\*\.\*\.\*-dev\.\*['"]/);
-assert.match(releaseWorkflow, /publish:[\s\S]*?environment: development/);
+// The publish job deliberately declares no GitHub environment, matching the
+// proven mmdc-v3 deploy workflow. That keeps the OIDC subject in the
+// `ref:refs/tags/<tag>` form and avoids a required-reviewer gate that no
+// spec or policy asks for. Tag-only access is enforced by the workflow
+// trigger, the in-job tag/ancestry validation, and `job_workflow_ref`.
+assert.doesNotMatch(releaseWorkflow, /environment: development/);
 assert.match(releaseWorkflow, /publish:[\s\S]*?id-token: write/);
 assert.match(releaseWorkflow, /AWS_ROLE_ARN: arn:aws:iam::349762920349:role\/mmdc-v3-development-github-deploy/);
 // These are the claims GitHub actually presents for the protected `publish`
