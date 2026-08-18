@@ -1,12 +1,13 @@
 #!/usr/bin/env node
 
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import process from 'node:process';
 
 const root = process.cwd();
+const ciEvidenceRoot = path.join(root, '.artifacts/ci');
 const generatedFiles = [
   'payload-types.ts',
   'src/app/(payload)/admin/importMap.d.ts',
@@ -167,7 +168,8 @@ const install = () =>
 
 const unitSchema = () => required('unit and schema tests', 'pnpm', ['run', 'test']);
 
-const securityScans = () => required('dependency and license checks', 'pnpm', ['run', 'check:dependencies']);
+const securityScans = () =>
+  required('security, dependency, license, IaC, and container scans', 'pnpm', ['run', 'ci:security-gates']);
 
 const jobDescriptions = {
   policy: [
@@ -184,7 +186,7 @@ const jobDescriptions = {
   integration: ['pnpm run migrate:apply', 'pnpm run test:integration'],
   build: ['env -u hosted credentials pnpm run build'],
   'container-smoke': ['pnpm run container:smoke'],
-  'security-scans': ['pnpm run check:dependencies']
+  'security-scans': ['pnpm run ci:security-gates', 'retain sanitized scan reports and image metadata']
 };
 
 const probe = (name) => {
@@ -217,6 +219,30 @@ const probe = (name) => {
 };
 
 const action = process.argv[2] ?? 'help';
+const jobsForEvidence = new Set([
+  'policy',
+  'install',
+  'typecheck',
+  'unit-schema',
+  'migration',
+  'integration',
+  'build',
+  'container-smoke',
+  'security-scans'
+]);
+if (jobsForEvidence.has(action)) {
+  const evidenceDirectory = path.join(ciEvidenceRoot, action);
+  mkdirSync(evidenceDirectory, { recursive: true });
+  const evidencePath = path.join(evidenceDirectory, 'result.json');
+  const writeEvidence = (status, exitCode = null) =>
+    writeFileSync(
+      evidencePath,
+      `${JSON.stringify({ schemaVersion: 1, job: action, status, exitCode, sanitized: true }, null, 2)}\n`,
+      'utf8'
+    );
+  writeEvidence('running');
+  process.on('exit', (exitCode) => writeEvidence(exitCode === 0 ? 'passed' : 'failed', exitCode));
+}
 if (action === 'describe') {
   const job = process.argv[3];
   if (!jobDescriptions[job]) {

@@ -32,6 +32,14 @@ jobs:
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
       - run: pnpm run ci:policy
+      - name: Retain policy test reports and sanitized logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-policy-test-reports
+          path: .artifacts/ci/policy
+          retention-days: 14
+          if-no-files-found: error
 
   install:
     name: install
@@ -50,6 +58,14 @@ jobs:
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
       - run: pnpm run ci:install
+      - name: Retain install test reports and sanitized logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-install-test-reports
+          path: .artifacts/ci/install
+          retention-days: 14
+          if-no-files-found: error
 
   typecheck:
     name: typecheck
@@ -69,6 +85,14 @@ jobs:
           cache-dependency-path: pnpm-lock.yaml
       - run: pnpm run ci:install
       - run: pnpm run ci:typecheck
+      - name: Retain typecheck test reports and sanitized logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-typecheck-test-reports
+          path: .artifacts/ci/typecheck
+          retention-days: 14
+          if-no-files-found: error
 
   unit-schema:
     name: unit-schema
@@ -88,6 +112,14 @@ jobs:
           cache-dependency-path: pnpm-lock.yaml
       - run: pnpm run ci:install
       - run: pnpm run ci:unit-schema
+      - name: Retain unit-schema test reports and sanitized logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-unit-schema-test-reports
+          path: .artifacts/ci/unit-schema
+          retention-days: 14
+          if-no-files-found: error
 
   migration:
     name: migration
@@ -128,6 +160,14 @@ jobs:
           cache-dependency-path: pnpm-lock.yaml
       - run: pnpm run ci:install
       - run: pnpm run ci:migration
+      - name: Retain migration test reports and sanitized logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-migration-test-reports
+          path: .artifacts/ci/migration
+          retention-days: 14
+          if-no-files-found: error
 
   integration:
     name: integration
@@ -209,6 +249,14 @@ jobs:
           appendFileSync(process.env.GITHUB_ENV, `MEILISEARCH_ADMIN_INDEXING_KEY=${admin}\nMEILISEARCH_SEARCH_ONLY_KEY=${search}\n`);
           NODE
       - run: pnpm run ci:integration
+      - name: Retain integration test reports and sanitized logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-integration-test-reports
+          path: .artifacts/ci/integration
+          retention-days: 14
+          if-no-files-found: error
 
   build:
     name: build
@@ -232,9 +280,12 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: next-build-metadata
-          path: .next/BUILD_ID
-          if-no-files-found: ignore
+          name: ci-build-image-metadata
+          path: |
+            .next/BUILD_ID
+            .artifacts/ci/build
+          retention-days: 14
+          if-no-files-found: error
 
   container-smoke:
     name: container-smoke
@@ -259,11 +310,19 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: container-smoke-evidence
-          path: .artifacts/F06-T02
-          if-no-files-found: ignore
+          path: |
+            .artifacts/F06-T02
+            .artifacts/ci/container-smoke
+          retention-days: 14
+          if-no-files-found: error
 
   security-scans:
     name: security-scans
+    if: always()
+    needs: [container-smoke]
+    permissions:
+      contents: read
+      actions: read
     runs-on: ubuntu-24.04
     concurrency:
       group: ci-security-scans-${{ github.workflow }}-${{ github.ref }}
@@ -279,4 +338,21 @@ jobs:
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
       - run: pnpm run ci:install
+      - name: Retrieve container SBOM, scan, and image metadata
+        if: always()
+        uses: actions/download-artifact@v4
+        with:
+          name: container-smoke-evidence
+          path: .artifacts/F06-T02
       - run: pnpm run ci:security-scans
+      - name: Retain secret-scan, dependency-scan, license-scan, IaC-scan, container-scan results, SBOM, image-metadata, test-reports, and sanitized logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-security-scans-evidence
+          path: |
+            .artifacts/F07-T02
+            .artifacts/F06-T02
+            .artifacts/ci/security-scans
+          retention-days: 14
+          if-no-files-found: error

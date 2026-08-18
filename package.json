@@ -30,6 +30,7 @@
     "ci:build": "node scripts/ci-jobs.mjs build",
     "ci:container-smoke": "node scripts/ci-jobs.mjs container-smoke",
     "ci:security-scans": "node scripts/ci-jobs.mjs security-scans",
+    "ci:security-gates": "node scripts/ci-security-gates.mjs scan",
     "test:integration": "node --experimental-strip-types tests/acceptance/F04-T02-probe.mjs",
     "lint": "eslint .",
     "generate:types": "node scripts/developer-workflow.mjs generate:types",

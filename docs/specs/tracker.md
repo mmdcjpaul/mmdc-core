@@ -4,7 +4,7 @@ plan_version: 0.1
 last_updated: 2026-08-18
 status_values: Not started | In progress | Done | Blocked
 progress_total: 25
-progress_done: 15
+progress_done: 16
 progress_blocked: 0
 ---
 
@@ -29,7 +29,7 @@ The first eligible `Not started` row is the next ticket. `loop.sh` resumes an `I
 | F06-T01 | Production runtime | Build the hardened immutable application image | Done | F04-T02,F05-T02 | docs/specs/F06-T01-production-image/SPEC.md |
 | F06-T02 | Production runtime | Define Compose services, health, lifecycle, and smoke tests | Done | F06-T01 | docs/specs/F06-T02-compose-runtime/SPEC.md |
 | F07-T01 | CI quality | Implement reproducible quality, migration, integration, and image jobs | Done | F06-T02 | docs/specs/F07-T01-ci-quality-jobs/SPEC.md |
-| F07-T02 | CI quality | Harden CI permissions, scans, artifacts, and merge gates | Not started | F07-T01,F00-T02 | docs/specs/F07-T02-ci-security-gates/SPEC.md |
+| F07-T02 | CI quality | Harden CI permissions, scans, artifacts, and merge gates | Done | F07-T01,F00-T02 | docs/specs/F07-T02-ci-security-gates/SPEC.md |
 | F08-T01 | AWS infrastructure | Define tagged development infrastructure in CloudFormation | Not started | F07-T02,F05-T02 | docs/specs/F08-T01-cloudformation/SPEC.md |
 | F08-T02 | AWS infrastructure | Bootstrap and approve reproducible host provisioning | Not started | F08-T01,F00-T02 | docs/specs/F08-T02-host-bootstrap/SPEC.md |
 | F09-T01 | Deployment | Validate release tags and publish immutable ECR desired state | Not started | F08-T02 | docs/specs/F09-T01-release-publication/SPEC.md |
