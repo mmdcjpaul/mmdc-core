@@ -41,6 +41,12 @@
       "AllowedPattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+/\\.github/workflows/[A-Za-z0-9_.-]+\\.yml@refs/tags/v\\*\\.\\*\\.\\*-dev\\.\\*$",
       "Description": "Exact release workflow file plus the development-tag ref pattern allowed to assume the publisher role. A tag-triggered run emits job_workflow_ref pinned to refs/tags/<tag>, never to a branch, so this value must end with the development-tag glob."
     },
+    "GitHubImmutableSubjectPrefix": {
+      "Type": "String",
+      "Default": "repo:mmdcjpaul@131217386/mmdc-core@1336726789",
+      "AllowedPattern": "^repo:[A-Za-z0-9_.-]+@[0-9]+/[A-Za-z0-9_.-]+@[0-9]+$",
+      "Description": "Immutable GitHub OIDC subject prefix (owner@owner_id/repo@repo_id) as reported by the repository sub-claim customization endpoint. GitHub issues immutable subjects for this repository, so the plain owner/repo prefix alone never matches."
+    },
     "GitHubOidcProviderArn": {
       "Type": "String",
       "Default": "arn:aws:iam::349762920349:oidc-provider/token.actions.githubusercontent.com",
@@ -341,13 +347,12 @@
               "Principal": { "Federated": { "Ref": "GitHubOidcProviderArn" } },
               "Action": "sts:AssumeRoleWithWebIdentity",
               "Condition": {
-                "StringEquals": {
-                  "token.actions.githubusercontent.com:aud": "sts.amazonaws.com",
-                  "token.actions.githubusercontent.com:sub": {
-                    "Fn::Sub": "repo:${GitHubRepository}:environment:${EnvironmentName}"
-                  }
-                },
+                "StringEquals": { "token.actions.githubusercontent.com:aud": "sts.amazonaws.com" },
                 "StringLike": {
+                  "token.actions.githubusercontent.com:sub": [
+                    { "Fn::Sub": "repo:${GitHubRepository}:*" },
+                    { "Fn::Sub": "${GitHubImmutableSubjectPrefix}:*" }
+                  ],
                   "token.actions.githubusercontent.com:job_workflow_ref": { "Ref": "GitHubWorkflowRef" }
                 }
               }

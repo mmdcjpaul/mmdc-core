@@ -242,13 +242,17 @@ assert.match(ecr.Properties.LifecyclePolicy.LifecyclePolicyText, /imageCountMore
 const role = cloudformation.Resources.GitHubDevelopmentDeployRole;
 const trust = role.Properties.AssumeRolePolicyDocument.Statement[0];
 assert.equal(trust.Condition.StringEquals['token.actions.githubusercontent.com:aud'], 'sts.amazonaws.com');
-// The publish job declares `environment: development`, so GitHub emits the
-// environment-scoped subject. The development-tag restriction is enforced
+// GitHub issues an immutable subject (`repo:<owner>@<id>/<repo>@<id>:...`)
+// for this repository, so the trust policy binds the subject to the
+// repository under both prefixes rather than to a GitHub-controlled selector
+// format. The workflow file and development-tag restriction are enforced
 // through `job_workflow_ref`, which a tag run pins to `refs/tags/<tag>`.
-assert.match(
-  trust.Condition.StringEquals['token.actions.githubusercontent.com:sub']['Fn::Sub'],
-  /^repo:\$\{GitHubRepository\}:environment:\$\{EnvironmentName\}$/
+const trustedSubs = trust.Condition.StringLike['token.actions.githubusercontent.com:sub'];
+assert.deepEqual(
+  trustedSubs.map((entry) => entry['Fn::Sub']),
+  ['repo:${GitHubRepository}:*', '${GitHubImmutableSubjectPrefix}:*']
 );
+assert.match(cloudformation.Parameters.GitHubImmutableSubjectPrefix.Default, /^repo:[^@]+@[0-9]+\/[^@]+@[0-9]+$/);
 assert.match(
   cloudformation.Parameters.GitHubWorkflowRef.Default,
   /\/\.github\/workflows\/release\.yml@refs\/tags\/v\*\.\*\.\*-dev\.\*$/

@@ -234,3 +234,24 @@ inferred from the repository template alone.
 | Regression coverage     | `F08-T01` and `F09-T01` probes previously asserted the trust policy against claims GitHub never emits; both were corrected to the real claim shapes with added negative cases                   |
 | Boundary                | No ECR publication, S3 desired-state write, host reconciliation, Neon mutation, service start, tag creation/modification, or F10 work occurred                                                  |
 | Remaining F09-T03 state | The OIDC blocker is cleared, but no authentic publication has yet succeeded, so F09-T03 remains **Blocked** pending a successful release run and host-deployment evidence                       |
+
+## GitHub immutable OIDC subject correction — 2026-08-18
+
+The first trust correction was insufficient. It fixed `job_workflow_ref` but
+replaced one wrong `sub` with another, so run `32143820431` failed again at
+`14:12:16Z` with the same denial. The subject format was then measured rather
+than assumed, using a temporary claim-probe workflow on a throwaway branch that
+printed non-secret claims only and was deleted afterwards.
+
+| Check                 | Sanitized result                                                                                                                                                                         |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Measured subject      | `repo:mmdcjpaul@131217386/mmdc-core@1336726789:ref:refs/heads/<branch>` — GitHub issues an **immutable** subject for this repository                                                     |
+| Measured workflow ref | `mmdcjpaul/mmdc-core/.github/workflows/<file>@refs/heads/<branch>` — `job_workflow_ref` does **not** carry the immutable prefix, so that condition was already correct                   |
+| Endpoint discrepancy  | `actions/oidc/customization/sub` reports `use_immutable_subject: false` while reporting `sub_claim_prefix: repo:mmdcjpaul@131217386/mmdc-core@1336726789`; the prefix is authoritative   |
+| Provider existence    | Ruled out as a cause: IAM rejects a policy naming a non-existent federated principal, and the trust-policy update succeeded                                                              |
+| Correction            | `sub` bound to the repository under both the plain and immutable prefixes via `StringLike`, rather than to a selector format GitHub controls                                             |
+| Residual binding      | Workflow file and development-tag restriction remain enforced by `job_workflow_ref`; environment protection (required reviewer, tag-only deployment branch policy) is enforced by GitHub |
+| Change set            | `mmdc-oidc-immutable-subject-20260818` / `cb61a003-aa88-44d5-8ae7-777ab7770863`; one `Modify` of `GitHubDevelopmentDeployRole`, `Replacement: False`                                     |
+| Execution             | `mmdc-v3-development` reached `UPDATE_COMPLETE` at `2026-08-18T14:25:12Z`; only the deploy role changed                                                                                  |
+| Probe hygiene         | The claim probe printed selected claims only and never the raw token; its branch and workflow were deleted after measurement                                                             |
+| Boundary              | No ECR publication, S3 desired-state write, host reconciliation, Neon mutation, service start, or tag creation/modification occurred                                                     |

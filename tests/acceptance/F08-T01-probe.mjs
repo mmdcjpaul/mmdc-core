@@ -164,6 +164,7 @@ const refs = {
   OwnerTag: 'Engineering',
   GitHubRepository: 'mmdcjpaul/mmdc-core',
   GitHubWorkflowRef: 'mmdcjpaul/mmdc-core/.github/workflows/release.yml@refs/tags/v*.*.*-dev.*',
+  GitHubImmutableSubjectPrefix: 'repo:mmdcjpaul@131217386/mmdc-core@1336726789',
   GitHubOidcProviderArn: 'arn:aws:iam::123456789012:oidc-provider/token.actions.githubusercontent.com',
   SshCidr: '192.0.2.10/32',
   'AWS::AccountId': '123456789012',
@@ -460,18 +461,39 @@ for (const statement of [...publisherStatements, ...hostStatements]) {
 const trustStatement = resources.GitHubDevelopmentDeployRole.Properties.AssumeRolePolicyDocument.Statement[0];
 assert.equal(trustStatement.Principal.Federated.Ref, 'GitHubOidcProviderArn');
 assert.equal(trustStatement.Condition.StringEquals['token.actions.githubusercontent.com:aud'], 'sts.amazonaws.com');
-// GitHub emits the environment-scoped subject for a job that declares an
-// environment, so the release job's `sub` is never the `ref:refs/tags/...`
-// form. The development-tag restriction is carried by `job_workflow_ref`,
-// which a tag-triggered run pins to `refs/tags/<tag>`.
-const trustedSub = render(trustStatement.Condition.StringEquals['token.actions.githubusercontent.com:sub']);
+// GitHub issues an *immutable* subject for this repository
+// (`repo:<owner>@<owner_id>/<repo>@<repo_id>:...`), which the sub-claim
+// customization endpoint reports as `sub_claim_prefix`. The plain
+// `repo:<owner>/<repo>` prefix alone never matches, so both prefixes are
+// accepted and the subject is bound to the repository rather than to a
+// selector format that GitHub controls. The workflow file and the
+// development-tag restriction are carried by `job_workflow_ref`, which a
+// tag-triggered run pins to `refs/tags/<tag>`.
+const trustedSubs = trustStatement.Condition.StringLike['token.actions.githubusercontent.com:sub'].map(render);
 const trustedWorkflow = render(
   trustStatement.Condition.StringLike['token.actions.githubusercontent.com:job_workflow_ref']
 );
+const subAccepts = (value) => trustedSubs.some((glob) => globMatches(glob, value));
+assert.deepEqual(
+  trustedSubs,
+  ['repo:mmdcjpaul/mmdc-core:*', 'repo:mmdcjpaul@131217386/mmdc-core@1336726789:*'],
+  'OIDC trust accepts the plain and immutable subject prefixes for this repository'
+);
 assert.equal(
-  trustedSub,
-  'repo:mmdcjpaul/mmdc-core:environment:development',
-  'OIDC trust binds the exact repository and protected environment'
+  subAccepts('repo:mmdcjpaul@131217386/mmdc-core@1336726789:environment:development'),
+  true,
+  'OIDC trust accepts the immutable environment-scoped subject GitHub actually issues'
+);
+assert.equal(
+  subAccepts('repo:mmdcjpaul/mmdc-core:environment:development'),
+  true,
+  'OIDC trust still accepts the plain subject if GitHub stops issuing immutable subjects'
+);
+assert.equal(subAccepts('repo:other/repo:environment:development'), false, 'OIDC trust denies another repository');
+assert.equal(
+  subAccepts('repo:mmdcjpaul@131217386/mmdc-other@999:environment:development'),
+  false,
+  'OIDC trust denies another immutable repository id'
 );
 assert.equal(
   globMatches(trustedWorkflow, 'mmdcjpaul/mmdc-core/.github/workflows/release.yml@refs/tags/v1.2.3-dev.4'),
@@ -508,7 +530,7 @@ assert.match(releaseWorkflow, /AWS_ROLE_ARN: arn:aws:iam::349762920349:role\/mmd
 // job on a `v*.*.*-dev.*` tag push, not a hand-written approximation.
 const releaseClaims = {
   'token.actions.githubusercontent.com:aud': 'sts.amazonaws.com',
-  'token.actions.githubusercontent.com:sub': 'repo:mmdcjpaul/mmdc-core:environment:development',
+  'token.actions.githubusercontent.com:sub': 'repo:mmdcjpaul@131217386/mmdc-core@1336726789:environment:development',
   'token.actions.githubusercontent.com:job_workflow_ref':
     'mmdcjpaul/mmdc-core/.github/workflows/release.yml@refs/tags/v0.1.0-dev.1'
 };
@@ -516,12 +538,12 @@ assert.equal(conditionMatches(trustStatement, releaseClaims), true, 'OIDC trust 
 assert.equal(
   conditionMatches(trustStatement, {
     ...releaseClaims,
-    'token.actions.githubusercontent.com:sub': 'repo:mmdcjpaul/mmdc-core:ref:refs/heads/development',
+    'token.actions.githubusercontent.com:sub': 'repo:other/repo:environment:development',
     'token.actions.githubusercontent.com:job_workflow_ref':
       'mmdcjpaul/mmdc-core/.github/workflows/release.yml@refs/heads/development'
   }),
   false,
-  'OIDC trust rejects a development branch push'
+  'OIDC trust rejects another repository subject'
 );
 assert.equal(
   conditionMatches(trustStatement, {
@@ -544,10 +566,10 @@ assert.equal(
 assert.equal(
   conditionMatches(trustStatement, {
     ...releaseClaims,
-    'token.actions.githubusercontent.com:sub': 'repo:mmdcjpaul/mmdc-core:environment:production'
+    'token.actions.githubusercontent.com:sub': 'repo:mmdcjpaul@131217386/mmdc-evil@42:environment:development'
   }),
   false,
-  'OIDC trust rejects another environment'
+  'OIDC trust rejects a lookalike immutable repository'
 );
 
 const costRegister = readFileSync('docs/registers/cost-retention-register.md', 'utf8');
