@@ -18,7 +18,7 @@ run_check() {
 }
 
 cd "$ROOT"
-for command in node pnpm rg ruby git; do
+for command in bash git grep node pnpm rg ruby; do
   command -v "$command" >/dev/null 2>&1 || fail "required command is unavailable: $command"
 done
 [ -x tests/acceptance/F09-T01.sh ] || fail 'acceptance script must be executable'

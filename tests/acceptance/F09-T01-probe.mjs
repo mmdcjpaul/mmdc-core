@@ -22,6 +22,11 @@ const cloudformation = JSON.parse(
 const rejects = (callback, message) => {
   assert.throws(callback, new RegExp(message));
 };
+const grepStatus = (args, input) => {
+  const result = spawnSync('grep', args, { input, encoding: 'utf8' });
+  assert.equal(result.error, undefined, result.error?.message);
+  return result.status;
+};
 
 assert.deepEqual(parseDevelopmentTag('v1.2.3-dev.4').releaseOrder, [1, 2, 3, 4]);
 for (const tag of [
@@ -184,6 +189,11 @@ assert.match(workflow, /push:\s*\n\s+tags:/);
 assert.match(workflow, /v\*\.\*\.\*-dev\.\*/);
 assert.match(workflow, /github\.event_name == 'push' && github\.ref_type == 'tag'/);
 assert.match(workflow, /github\.event\.forced/);
+assert.match(workflow, /test "\$GITHUB_EVENT_NAME" = push/);
+assert.match(workflow, /test "\$GITHUB_REF_TYPE" = tag/);
+assert.match(workflow, /test "\$GITHUB_REF" = "refs\/tags\/\$RELEASE_TAG"/);
+assert.match(workflow, /git merge-base --is-ancestor "\$RELEASE_SHA" origin\/development/);
+assert.match(workflow, /git tag --points-at "\$RELEASE_SHA" \| grep -Fx -- "\$RELEASE_TAG"/);
 assert.match(workflow, /permissions:\s*\n\s+contents: read\s*\n\s+id-token: write/);
 assert.match(workflow, /aws-actions\/configure-aws-credentials@v4/);
 assert.match(workflow, /role-to-assume: \$\{\{ env\.AWS_ROLE_ARN \}\}/);
@@ -195,7 +205,30 @@ assert.match(workflow, /Reject a reused semantic ECR tag[\s\S]*imageTag="\$RELEA
 assert.match(workflow, /docker buildx imagetools create[\s\S]*\$ECR_REPOSITORY:\$RELEASE_TAG[\s\S]*@\$digest/);
 assert.match(workflow, /aws s3 cp[\s\S]*desired\.json/);
 assert.match(workflow, /issued_at="\$\(git show -s --format=%cI "\$GITHUB_SHA"\)"/);
-assert.match(workflow, /issued_at[\s\S]*rg -q '\^20\[0-9\]\{2\}/);
+assert.match(workflow, /printf '%s\\n' "\$digest" \| grep -E '\^sha256:\[0-9a-f\]\{64\}\$'/);
+assert.match(workflow, /issued_at[\s\S]*grep -Eq '\^20\[0-9\]\{2\}/);
+assert.match(workflow, /for command in git grep node; do\s+command -v "\$command" >\/dev\/null 2>&1\s+done/);
+assert.match(workflow, /for command in aws docker git grep node; do\s+command -v "\$command" >\/dev\/null 2>&1\s+done/);
+assert.doesNotMatch(workflow, /(^|[|;&()\s])rg(?:[|;&()\s]|$)/m);
+assert.equal(grepStatus(['-Fx', '--', 'v1.2.3-dev.4'], 'v1.2.3-dev.4\n'), 0);
+assert.equal(grepStatus(['-Fx', '--', 'v1.2.3-dev.4'], 'v1.2.3-dev.40\n'), 1);
+assert.equal(grepStatus(['-E', '^sha256:[0-9a-f]{64}$'], `sha256:${'a'.repeat(64)}\n`), 0);
+assert.equal(grepStatus(['-E', '^sha256:[0-9a-f]{64}$'], `sha256:${'a'.repeat(64)}extra\n`), 1);
+const timestampPattern =
+  '^20[0-9]{2}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]+)?(Z|[+-][0-9]{2}:[0-9]{2})$';
+assert.equal(grepStatus(['-E', timestampPattern], '2026-08-18T11:12:29Z\n'), 0);
+assert.equal(grepStatus(['-E', timestampPattern], '2026-08-18 11:12:29Z\n'), 1);
+assert.equal(
+  spawnSync('bash', ['-c', 'for command in git grep node; do command -v "$command" >/dev/null 2>&1; done']).status,
+  0
+);
+assert.notEqual(
+  spawnSync('bash', [
+    '-c',
+    'for command in git mmdc-unavailable-command; do command -v "$command" >/dev/null 2>&1; done'
+  ]).status,
+  0
+);
 assert.doesNotMatch(workflow, /github\.event\.head_commit\.timestamp/);
 assert.doesNotMatch(workflow, /latest/);
 assert.doesNotMatch(workflow, /AWS_(?:ACCESS|SECRET|SESSION)_KEY|secrets\./);

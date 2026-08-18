@@ -71,6 +71,11 @@ jobs:
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
+      - name: Validate trusted runner commands
+        run: |
+          for command in git grep node; do
+            command -v "$command" >/dev/null 2>&1
+          done
       - name: Validate trusted semantic tag and development ancestry
         env:
           RELEASE_TAG: ${{ github.ref_name }}
@@ -82,7 +87,7 @@ jobs:
           test "$GITHUB_REF" = "refs/tags/$RELEASE_TAG"
           git fetch origin development --force --no-tags
           git merge-base --is-ancestor "$RELEASE_SHA" origin/development
-          git tag --points-at "$RELEASE_SHA" | rg -Fx "$RELEASE_TAG"
+          git tag --points-at "$RELEASE_SHA" | grep -Fx -- "$RELEASE_TAG"
           node --input-type=module -e '
             import { validateReleaseEvent } from "./scripts/release-publication.mjs";
             validateReleaseEvent({
@@ -104,6 +109,11 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
           role-session-name: mmdc-development-release-${{ github.run_id }}
       - uses: docker/setup-buildx-action@v3
+      - name: Validate publication runner commands
+        run: |
+          for command in aws docker git grep node; do
+            command -v "$command" >/dev/null 2>&1
+          done
       - name: Authenticate to private ECR
         run: aws ecr get-login-password --region "$AWS_REGION" | docker login --username AWS --password-stdin "${ECR_REPOSITORY%%/*}"
       - name: Reject a reused semantic ECR tag
@@ -131,7 +141,7 @@ jobs:
           RELEASE_TAG: ${{ github.ref_name }}
         run: |
           digest="$(aws ecr describe-images --repository-name mmdc-v3-development --image-ids imageTag="$GITHUB_SHA" --query 'imageDetails[0].imageDigest' --output text)"
-          printf '%s\n' "$digest" | rg '^sha256:[0-9a-f]{64}$'
+          printf '%s\n' "$digest" | grep -E '^sha256:[0-9a-f]{64}$'
           printf '%s\n' "$digest" > .artifacts/release/image.digest
           docker buildx imagetools create --tag "$ECR_REPOSITORY:$RELEASE_TAG" "$ECR_REPOSITORY@$digest"
           DIGEST="$digest" node --input-type=module -e '
@@ -151,7 +161,7 @@ jobs:
           digest="$(cat .artifacts/release/image.digest)"
           test -n "$MIGRATION_VERSION"
           issued_at="$(git show -s --format=%cI "$GITHUB_SHA")"
-          printf '%s\n' "$issued_at" | rg -q '^20[0-9]{2}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]+)?(Z|[+-][0-9]{2}:[0-9]{2})$'
+          printf '%s\n' "$issued_at" | grep -Eq '^20[0-9]{2}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]+)?(Z|[+-][0-9]{2}:[0-9]{2})$'
           node scripts/release-publication.mjs publish-state \
             --repository "$ECR_REPOSITORY" \
             --tag "$RELEASE_TAG" \
