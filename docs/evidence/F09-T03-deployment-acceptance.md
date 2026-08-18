@@ -4,12 +4,12 @@
 | ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Evidence state     | **Blocked — authentic external release evidence not supplied**                                                                                                                                     |
 | Local verifier     | Passed deterministic synthetic reconciliation and negative-path proof                                                                                                                              |
-| External verifier  | Authentic release run `32130129246` and foundation run `32132576967` retained; both failed before any release/deployment transition, with remediation recorded below                               |
+| External verifier  | Authentic release run `32143820431` and green foundation run `32139737005` retained; the release run failed during OIDC credential configuration before ECR/S3 publication, with remediation recorded below                    |
 | Environment        | development; no F09-T03 runtime release is claimed                                                                                                                                                 |
 | Required release   | An explicitly approved `vMAJOR.MINOR.PATCH-dev.N` development tag                                                                                                                                  |
 | Required evidence  | Repository/ref/workflow, Git SHA, ECR digest, desired-state digest/integrity, migration version, web/worker digests, probes, final status, approvals, timestamps, and retained artifact references |
 | Synthetic evidence | Clearly labeled in `tests/acceptance/F09-T03-probe.mjs`; never promoted to acceptance                                                                                                              |
-| External mutation  | Exact tag `v0.1.0-dev.1` was pushed at the approved commit and triggered one protected workflow run; no ECR/S3 publication, Lightsail deployment, Neon mutation, or application release occurred   |
+| External mutation  | Exact tag `v0.1.0-dev.2` was pushed at the approved commit and triggered one protected workflow run; no ECR/S3 publication, Lightsail deployment, Neon mutation, or application release occurred   |
 
 ## Release-preparation audit — 2026-08-18 (pre-reconciliation snapshot)
 
@@ -111,6 +111,24 @@ security-scans; the other foundation jobs passed.
 | Security scan           | The only blocking finding was the intentionally synthetic credential-shaped URL literal at `tests/acceptance/F09-T03-probe.mjs:236`. The test now assembles that value at runtime, preserving the sensitive-value rejection assertion without adding a scanner exemption. Dependency, license, IaC, and container scans were already passing. |
 | Regression coverage     | F07-T02, F09-T01, the F09-T03 deterministic probe, the workflow harness, typecheck, unit tests, lint, format, real security gates, and direct F06-T02 container acceptance passed locally.                                                                                                                                                    |
 | Boundary                | No GitHub rerun, tag, AWS/Neon/GitHub-settings mutation, ECR/S3 publication, host reconciliation, service start, deployment, or F10 work occurred while making this correction.                                                                                                                                                               |
+
+## Immutable release publication attempt — 2026-08-18
+
+This records the separately approved `v0.1.0-dev.2` publication attempt. The
+semantic tag remains immutable and is not to be modified or reused. No host,
+Neon, service-start, GitHub-settings, or F10 operation was performed.
+
+| Check                | Sanitized result                                                                                                                                                                                                 |
+| -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Exact ref            | Annotated tag `v0.1.0-dev.2` points exactly to `ffb44d2e550510962532f270011d297bacb6bc33`; the tag was absent before creation and `v0.1.0-dev.1` remains unchanged at its original commit                               |
+| Foundation gate      | Run `32139737005` completed successfully for `ffb44d2e550510962532f270011d297bacb6bc33` before the tag was created                                                                                              |
+| Workflow             | [Run `32143820431`](https://github.com/mmdcjpaul/mmdc-core/actions/runs/32143820431), exact tag ref and commit; `release-quality` succeeded                                                                           |
+| Environment review   | Protected `development` review was recorded through GitHub's pending-deployment approval endpoint by the authenticated required reviewer `mmdcjpaul`; deployment record `5963982058` was created for the exact commit       |
+| Publication result   | `publish-development-release` failed at `aws-actions/configure-aws-credentials@v4` with `Not authorized to perform sts:AssumeRoleWithWebIdentity` before ECR authentication, image build, digest mapping, or S3 publication              |
+| AWS read-only check  | With `mmdc-iaac`, account `349762920349` and assumed role `MMDCIaacOperator` were verified; the exact ECR semantic tag, exact Git-SHA image tag, and deployment `desired.json` object were all absent after the failed run              |
+| Artifact boundary    | No `.artifacts/release` files were produced; the always-run upload therefore retained no publication evidence, and no immutable ECR digest or desired-state integrity exists for this attempt                                      |
+| Prohibited actions   | No retry, tag modification, ECR/S3 publication, host reconciliation, Neon operation, application/worker start, deployment, GitHub-settings change, or F10 work occurred                                      |
+| Acceptance state      | F09-T03 remains **Blocked** pending a successful authentic release publication and the separately guarded host-deployment/migration evidence required by the acceptance checklist                                    |
 
 ## Precise blocker and input checklist
 
