@@ -53,6 +53,7 @@ check() {
   require_command jq
   require_command sha256sum
   require_command docker
+  require_command aws
   docker compose version >/dev/null 2>&1 || fail 'Docker Compose v2 is unavailable'
   if awk '/^[[:space:]]*command:/{capture=1} capture && /migrat(e|ion)/{exit 0} capture && /^[[:space:]]*[a-zA-Z0-9_-]+:/{capture=0} END{exit 1}' \
     "$compose_dir/production.yml"; then
@@ -217,11 +218,16 @@ fixture_action() {
 }
 
 pull_exact_digest() {
-  local image_ref="$1" repository="$2" digest="$3"
+  local image_ref="$1" repository="$2" digest="$3" registry region
   if [[ "$probe_mode" == 'fixture' ]]; then
     fixture_action pull "$digest"
     return
   fi
+  registry="${repository%%/*}"
+  region="${AWS_REGION:-${AWS_DEFAULT_REGION:-}}"
+  [[ -n "$region" && "$registry" =~ ^[0-9]{12}\.dkr\.ecr\.${region}\.amazonaws\.com$ ]] || return 1
+  aws ecr get-login-password --region "$region" |
+    docker login --username AWS --password-stdin "$registry" >/dev/null 2>&1 || return 1
   docker pull "$image_ref" >/dev/null 2>&1 || return 1
   docker image inspect --format '{{json .RepoDigests}}' "$image_ref" 2>/dev/null | grep -Fq "${repository}@${digest}"
 }

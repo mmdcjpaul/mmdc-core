@@ -6,6 +6,8 @@ set -Eeuo pipefail
 # deployment state and never compiles the working tree.
 
 readonly BOOTSTRAP_VERSION='F08-T02-bootstrap-v1'
+readonly AWS_CLI_VERSION='2.36.25'
+readonly AWS_CLI_X86_64_SHA256='7c09cb85649d9fafef78993df08cd0672c8615c97f9b9f657c229fa5445f35c8'
 readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly SOURCE_ROOT="${MMDC_BOOTSTRAP_SOURCE_ROOT:-$(cd "$SCRIPT_DIR/../.." && pwd)}"
 readonly DEST_ROOT="${MMDC_BOOTSTRAP_ROOT:-/}"
@@ -68,6 +70,7 @@ install_packages() {
     jq
     logrotate
     postgresql-client
+    unzip
     docker-ce
     docker-ce-cli
     containerd.io
@@ -108,8 +111,30 @@ install_packages() {
 }
 
 install_packages
+
+install_aws_cli() {
+  local architecture archive_url expected_sha temporary
+  if command -v aws >/dev/null 2>&1 && aws --version 2>&1 | grep -q '^aws-cli/2\.'; then return; fi
+  if [[ "$TEST_MODE" == '1' ]]; then
+    die 'AWS CLI test shim is unavailable'
+  fi
+  architecture="$(dpkg --print-architecture)"
+  [[ "$architecture" == 'amd64' ]] || die "unsupported AWS CLI architecture: $architecture"
+  archive_url="https://awscli.amazonaws.com/awscli-exe-linux-x86_64-${AWS_CLI_VERSION}.zip"
+  expected_sha="$AWS_CLI_X86_64_SHA256"
+  temporary="$(mktemp -d /tmp/mmdc-aws-cli.XXXXXX)"
+  curl -fsSL "$archive_url" -o "$temporary/awscliv2.zip"
+  printf '%s  %s\n' "$expected_sha" "$temporary/awscliv2.zip" | sha256sum --check --status ||
+    die 'AWS CLI archive checksum verification failed'
+  unzip -q "$temporary/awscliv2.zip" -d "$temporary"
+  "$temporary/aws/install" --bin-dir /usr/local/bin --install-dir /usr/local/aws-cli
+  find "$temporary" -depth -delete
+}
+
+install_aws_cli
 command -v docker >/dev/null 2>&1 || die 'Docker Engine is not installed'
 docker compose version >/dev/null 2>&1 || die 'Docker Compose v2 is not installed'
+aws --version 2>&1 | grep -q '^aws-cli/2\.' || die 'AWS CLI v2 is not installed'
 
 systemctl daemon-reload
 systemctl enable --now docker

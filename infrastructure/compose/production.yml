@@ -6,7 +6,9 @@ services:
     labels:
       com.mmdc.application.digest: ${MMDC_APPLICATION_DIGEST:?MMDC_APPLICATION_DIGEST is required}
     command: ['web']
-    env_file: ['${MMDC_RUNTIME_ENV_FILE:-.env}']
+    env_file:
+      - path: '${MMDC_RUNTIME_ENV_FILE:-.env}'
+        format: raw
     depends_on:
       meilisearch:
         condition: service_healthy
@@ -46,7 +48,9 @@ services:
     labels:
       com.mmdc.application.digest: ${MMDC_APPLICATION_DIGEST:?MMDC_APPLICATION_DIGEST is required}
     command: ['worker']
-    env_file: ['${MMDC_RUNTIME_ENV_FILE:-.env}']
+    env_file:
+      - path: '${MMDC_RUNTIME_ENV_FILE:-.env}'
+        format: raw
     depends_on:
       meilisearch:
         condition: service_healthy

@@ -84,12 +84,13 @@ MMDC_BOOTSTRAP_SOURCE_ROOT=/srv/mmdc-reviewed \
 ```
 
 The script is safe to repeat. It installs Docker Engine/Compose, provisions the
-Caddy/Compose definitions, installs the readiness-configured pull agent and
-the `pg_dump`-based direct-Neon backup wrapper, creates root-only environment
-files, enables log rotation, and enables the agent service. Runtime values are
-delivered separately into `/etc/mmdc/*.env` with mode `0600`; the bootstrap
-never prints them. It does not invoke `pnpm`, `npm`, `git`, a compiler, or a
-source build.
+Caddy/Compose definitions, installs a checksum-pinned AWS CLI v2 for scoped
+desired-state, ECR, status, and backup operations, installs the
+readiness-configured pull agent and the `pg_dump`-based direct-Neon backup
+wrapper, creates root-only environment files, enables log rotation, and enables
+the agent service. Runtime values are delivered separately into
+`/etc/mmdc/*.env` with mode `0600`; the bootstrap never prints them. It does not
+invoke `pnpm`, `npm`, `git`, a compiler, or a source build.
 
 For F08-T02, deployment-ready means Phase 8 readiness-ready: the reviewed
 bootstrap has completed, the protected environment-file locations and private

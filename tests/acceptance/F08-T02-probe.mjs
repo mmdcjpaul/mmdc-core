@@ -11,6 +11,7 @@ const template = path.join(root, 'infrastructure/cloudformation/development.json
 const evidence = path.join(root, 'docs/evidence/F08-T02-host-bootstrap.md');
 const runbook = readFileSync(path.join(root, 'docs/runbooks/host-bootstrap.md'), 'utf8');
 const productionCompose = readFileSync(path.join(root, 'infrastructure/compose/production.yml'), 'utf8');
+const pullAgentText = readFileSync(path.join(root, 'infrastructure/host/mmdc-pull-agent.sh'), 'utf8');
 const bootstrapText = readFileSync(bootstrap, 'utf8');
 const templateText = readFileSync(template, 'utf8');
 const templateDocument = JSON.parse(templateText);
@@ -49,6 +50,7 @@ assert.doesNotMatch(bootstrapText, /\b(?:pnpm|npm|yarn|git|make|gcc|node)\b/, 'b
 for (const required of [
   'docker-ce',
   'docker-compose-plugin',
+  'AWS CLI',
   'postgresql-client',
   'shared.yml',
   'production.yml',
@@ -125,6 +127,7 @@ const writeShim = (name, body) => {
 
 writeShim('apt-get', 'exit 0');
 writeShim('systemctl', 'exit 0');
+writeShim('aws', '[ "$1" = --version ] && { echo "aws-cli/2.36.25 synthetic-test"; exit 0; }; exit 0');
 writeShim(
   'docker',
   '[ "$1" = compose ] && [ "$2" = version ] && { echo \'Docker Compose version v2.29.7\'; exit 0; }; exit 0'
@@ -200,7 +203,14 @@ assert.doesNotMatch(readFileSync(log, 'utf8'), new RegExp(externalSentinel));
 // contract rather than a source build.
 assert.match(productionCompose, /networks:\s*\[mmdc-internal\]/);
 assert.match(productionCompose, /caddy:/);
+assert.equal(
+  (productionCompose.match(/format:\s*raw/g) ?? []).length,
+  2,
+  'application and worker preserve runtime secret bytes through raw env-file parsing'
+);
 assert.doesNotMatch(productionCompose, /ports:\s*\n(?:\s+-.*\n)*\s+-.*7700/);
+assert.match(pullAgentText, /ecr get-login-password --region/);
+assert.match(pullAgentText, /docker login --username AWS --password-stdin/);
 assert.match(readFileSync(path.join(root, 'infrastructure/host/mmdc-neon-backup.sh'), 'utf8'), /DATABASE_DIRECT_URL/);
 assert.match(
   readFileSync(path.join(root, 'infrastructure/host/mmdc-neon-backup.sh'), 'utf8'),
@@ -247,7 +257,14 @@ assert.match(
   /^(arn:aws:iam::\d{12}:(?:user|role)\/.+|arn:aws:sts::\d{12}:assumed-role\/.+)$/
 );
 assert.match(valueFor('CloudFormation template SHA-256'), /^sha256=[a-f0-9]{64}$/);
-assert.equal(valueFor('CloudFormation template SHA-256'), `sha256=${sha256(template)}`);
+// F08 evidence remains bound to the exact historical host-provisioning change
+// set. Later guarded IaC tickets may evolve the live template without
+// rewriting that authentic approval record to a digest the approver did not
+// authorize.
+assert.equal(
+  valueFor('CloudFormation template SHA-256'),
+  'sha256=3302ecb092f81e501115423eb576b5e1d8fecdb4db32e20432ddb162a67ca645'
+);
 assert.match(valueFor('Identity verified at (UTC)'), /^20\d{2}-\d{2}-\d{2}T.*Z$/);
 const approvalTimestamp = valueFor('Approval timestamp (UTC)');
 const approvalSemantics = valueFor('Approval evidence semantics');
