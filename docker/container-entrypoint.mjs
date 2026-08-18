@@ -27,6 +27,7 @@ const child = spawn(executable, executableArguments, {
 
 for (const signal of ['SIGINT', 'SIGTERM']) {
   process.once(signal, () => {
+    console.log(JSON.stringify({ event: 'runtime.signal', command, signal }));
     if (!child.killed) child.kill(signal);
   });
 }

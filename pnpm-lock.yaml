@@ -6,6 +6,7 @@ settings:
 
 overrides:
   '@next/env': 16.3.1
+  esbuild: 0.28.2
 
 importers:
 
@@ -32,6 +33,9 @@ importers:
       payload:
         specifier: 3.88.0
         version: 3.88.0(graphql@16.14.2)(supports-color@7.2.0)(typescript@5.8.3)
+      pg:
+        specifier: 8.20.0
+        version: 8.20.0
       react:
         specifier: 19.2.8
         version: 19.2.8
@@ -45,6 +49,9 @@ importers:
       '@types/node':
         specifier: 24.0.3
         version: 24.0.3
+      '@types/pg':
+        specifier: 8.20.0
+        version: 8.20.0
       '@types/react':
         specifier: 19.1.2
         version: 19.1.2
@@ -4195,7 +4202,7 @@ snapshots:
 
   '@esbuild-kit/core-utils@3.3.2':
     dependencies:
-      esbuild: 0.18.20
+      esbuild: 0.28.2
       source-map-support: 0.5.21
 
   '@esbuild-kit/esm-loader@2.6.5':
@@ -5740,8 +5747,8 @@ snapshots:
     dependencies:
       '@drizzle-team/brocli': 0.10.2
       '@esbuild-kit/esm-loader': 2.6.5
-      esbuild: 0.25.12
-      esbuild-register: 3.6.0(esbuild@0.25.12)(supports-color@7.2.0)
+      esbuild: 0.28.2
+      esbuild-register: 3.6.0(esbuild@0.28.2)(supports-color@7.2.0)
     transitivePeerDependencies:
       - supports-color
 
@@ -5880,10 +5887,10 @@ snapshots:
       is-date-object: 1.1.0
       is-symbol: 1.1.1
 
-  esbuild-register@3.6.0(esbuild@0.25.12)(supports-color@7.2.0):
+  esbuild-register@3.6.0(esbuild@0.28.2)(supports-color@7.2.0):
     dependencies:
       debug: 4.4.3(supports-color@7.2.0)
-      esbuild: 0.25.12
+      esbuild: 0.28.2
     transitivePeerDependencies:
       - supports-color
 

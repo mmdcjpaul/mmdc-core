@@ -1,0 +1,15 @@
+{
+  auto_https off
+}
+
+:80 {
+  @health path /health
+  respond @health 200
+  reverse_proxy application:3000
+}
+
+:443 {
+  @health path /health
+  respond @health 200
+  reverse_proxy application:3000
+}

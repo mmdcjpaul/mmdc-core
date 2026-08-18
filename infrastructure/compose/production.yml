@@ -1,0 +1,231 @@
+name: ${MMDC_COMPOSE_PROJECT_NAME:-mmdc-production}
+
+services:
+  application:
+    image: ${MMDC_APPLICATION_IMAGE:?MMDC_APPLICATION_IMAGE must be an immutable digest reference}
+    labels:
+      com.mmdc.application.digest: ${MMDC_APPLICATION_DIGEST:?MMDC_APPLICATION_DIGEST is required}
+    command: ['web']
+    env_file: ['${MMDC_RUNTIME_ENV_FILE:-.env}']
+    depends_on:
+      meilisearch:
+        condition: service_healthy
+    init: true
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+    stop_signal: SIGTERM
+    stop_grace_period: 30s
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://127.0.0.1:3000/api/health/live').then((response) => process.exit(response.ok ? 0 : 1)).catch(() => process.exit(1))"
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: '1.00'
+          memory: 768M
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: '5'
+    networks: [mmdc-internal]
+
+  worker:
+    image: ${MMDC_APPLICATION_IMAGE:?MMDC_APPLICATION_IMAGE must be an immutable digest reference}
+    labels:
+      com.mmdc.application.digest: ${MMDC_APPLICATION_DIGEST:?MMDC_APPLICATION_DIGEST is required}
+    command: ['worker']
+    env_file: ['${MMDC_RUNTIME_ENV_FILE:-.env}']
+    depends_on:
+      meilisearch:
+        condition: service_healthy
+    init: true
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+    stop_signal: SIGTERM
+    stop_grace_period: 30s
+    restart: unless-stopped
+    healthcheck:
+      test: ['CMD', 'node', '-e', 'try { process.kill(1, 0); process.exit(0); } catch { process.exit(1); }']
+      interval: 5s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: '1.00'
+          memory: 768M
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: '5'
+    networks: [mmdc-internal]
+
+  meilisearch:
+    image: getmeili/meilisearch:v1.51.0
+    environment:
+      MEILI_ENV: production
+      MEILI_MASTER_KEY: ${MEILISEARCH_MASTER_KEY:?MEILISEARCH_MASTER_KEY is required}
+      MEILI_NO_ANALYTICS: 'true'
+    volumes:
+      - mmdc-production-meilisearch-data:/meili_data
+    restart: unless-stopped
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -qO- http://127.0.0.1:7700/health >/dev/null 2>&1']
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: '1.00'
+          memory: 1G
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: '5'
+    networks: [mmdc-internal]
+
+  caddy:
+    image: caddy:2.10.2-alpine
+    depends_on:
+      application:
+        condition: service_healthy
+    ports:
+      - '${MMDC_CADDY_BIND_ADDRESS:-0.0.0.0}:${MMDC_CADDY_HTTP_PORT:-80}:80'
+      - '${MMDC_CADDY_BIND_ADDRESS:-0.0.0.0}:${MMDC_CADDY_HTTPS_PORT:-443}:443'
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - mmdc-production-caddy-data:/data
+      - mmdc-production-caddy-config:/config
+    restart: unless-stopped
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -qO- http://127.0.0.1/health >/dev/null 2>&1']
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 5s
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 256M
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: '5'
+    networks: [mmdc-internal, mmdc-public]
+
+  deployment-agent:
+    image: alpine:3.22.1
+    command:
+      ['sh', '-c', "touch /tmp/deployment-agent-ready; trap 'exit 0' TERM INT; while :; do sleep 3600 & wait $!; done"]
+    init: true
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=16m
+    stop_signal: SIGTERM
+    stop_grace_period: 10s
+    restart: unless-stopped
+    healthcheck:
+      test: ['CMD-SHELL', 'test -f /tmp/deployment-agent-ready']
+      interval: 5s
+      timeout: 2s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 128M
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: '5'
+    networks: [mmdc-internal]
+
+  postgres:
+    profiles: [smoke]
+    image: postgres:17
+    environment:
+      POSTGRES_DB: mmdc_local_smoke
+      POSTGRES_USER: mmdc
+      POSTGRES_PASSWORD: ${MMDC_SMOKE_POSTGRES_PASSWORD:?MMDC_SMOKE_POSTGRES_PASSWORD is required}
+    ports:
+      - '127.0.0.1:${MMDC_SMOKE_POSTGRES_PORT:-15432}:5432'
+    volumes:
+      - mmdc-production-smoke-postgres-data:/var/lib/postgresql/data
+    restart: 'no'
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U mmdc -d mmdc_local_smoke']
+      interval: 2s
+      timeout: 3s
+      retries: 30
+    deploy:
+      resources:
+        limits:
+          cpus: '1.00'
+          memory: 768M
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: '5'
+    networks: [mmdc-internal, mmdc-smoke-host]
+
+  media:
+    profiles: [smoke]
+    image: minio/minio:RELEASE.2024-06-13T22-53-53Z
+    command: ['server', '/data']
+    environment:
+      MINIO_ROOT_USER: ${MMDC_SMOKE_MEDIA_ACCESS_KEY:?MMDC_SMOKE_MEDIA_ACCESS_KEY is required}
+      MINIO_ROOT_PASSWORD: ${MMDC_SMOKE_MEDIA_SECRET_KEY:?MMDC_SMOKE_MEDIA_SECRET_KEY is required}
+    volumes:
+      - mmdc-production-smoke-media-data:/data
+    restart: 'no'
+    healthcheck:
+      test: ['CMD-SHELL', 'curl -fsS http://127.0.0.1:9000/minio/health/live >/dev/null']
+      interval: 2s
+      timeout: 3s
+      retries: 30
+    deploy:
+      resources:
+        limits:
+          cpus: '1.00'
+          memory: 768M
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: '5'
+    networks: [mmdc-internal]
+
+volumes:
+  mmdc-production-meilisearch-data:
+  mmdc-production-caddy-data:
+  mmdc-production-caddy-config:
+  mmdc-production-smoke-postgres-data:
+  mmdc-production-smoke-media-data:
+
+networks:
+  mmdc-internal:
+    internal: true
+  mmdc-smoke-host:
+  mmdc-public:

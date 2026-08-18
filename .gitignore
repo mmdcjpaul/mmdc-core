@@ -5,6 +5,7 @@ node_modules/
 .mmdc/
 out/
 coverage/
+.artifacts/
 *.tsbuildinfo
 .env*
 !.env.example
