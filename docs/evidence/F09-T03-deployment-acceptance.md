@@ -1,15 +1,15 @@
 # F09-T03 deployment acceptance evidence
 
-| Field              | Value                                                                                                                                                                                                     |
-| ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Evidence state     | **Blocked — authentic external release evidence not supplied**                                                                                                                                            |
-| Local verifier     | Passed deterministic synthetic reconciliation and negative-path proof                                                                                                                                     |
-| External verifier  | Not run against a retained authentic release record                                                                                                                                                       |
-| Environment        | development; no F09-T03 runtime release is claimed                                                                                                                                                        |
-| Required release   | An explicitly approved `vMAJOR.MINOR.PATCH-dev.N` development tag                                                                                                                                         |
-| Required evidence  | Repository/ref/workflow, Git SHA, ECR digest, desired-state digest/integrity, migration version, web/worker digests, probes, final status, approvals, timestamps, and retained artifact references        |
-| Synthetic evidence | Clearly labeled in `tests/acceptance/F09-T03-probe.mjs`; never promoted to acceptance                                                                                                                     |
-| External mutation  | No tag, GitHub workflow, ECR/S3 publication, Lightsail deployment, Neon mutation, or application release; the authorized existing workload credential was delivered to root-only app-02 environment files |
+| Field              | Value                                                                                                                                                                                              |
+| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Evidence state     | **Blocked — authentic external release evidence not supplied**                                                                                                                                     |
+| Local verifier     | Passed deterministic synthetic reconciliation and negative-path proof                                                                                                                              |
+| External verifier  | Authentic run `32130129246` retained; quality passed, but publication failed before AWS credential configuration because the runner lacked `rg`                                                    |
+| Environment        | development; no F09-T03 runtime release is claimed                                                                                                                                                 |
+| Required release   | An explicitly approved `vMAJOR.MINOR.PATCH-dev.N` development tag                                                                                                                                  |
+| Required evidence  | Repository/ref/workflow, Git SHA, ECR digest, desired-state digest/integrity, migration version, web/worker digests, probes, final status, approvals, timestamps, and retained artifact references |
+| Synthetic evidence | Clearly labeled in `tests/acceptance/F09-T03-probe.mjs`; never promoted to acceptance                                                                                                              |
+| External mutation  | Exact tag `v0.1.0-dev.1` was pushed at the approved commit and triggered one protected workflow run; no ECR/S3 publication, Lightsail deployment, Neon mutation, or application release occurred   |
 
 ## Release-preparation audit — 2026-08-18 (pre-reconciliation snapshot)
 
@@ -38,7 +38,7 @@ and does not claim an application or worker release.
 | Pull/backup delivery      | `/etc/mmdc/pull.env` and `/etc/mmdc/backup.env` are nonempty, root-owned mode `0600`, and name the governed development ECR, deployment, media, and backup resources; the backup scope receives only the direct Neon URL                                              |
 | Meilisearch service       | The existing pinned Compose service remains private on `mmdc-internal` with no host port binding; master, admin/indexing, and search-only identities remain distinct with `mmdc-*` scope                                                                              |
 | Scope validation          | Distinct pooled/direct Neon read-only connectivity, Meilisearch master/admin/search allow/deny boundaries, media/backup/desired-state reads, ECR authorization/repository reads, and unrelated media-prefix/bucket denials passed without listing or mutating objects |
-| Release boundary          | No tag, GitHub workflow, ECR/S3 publication, Neon mutation, application/worker deployment, or F10 work performed                                                                                                                                                      |
+| Release boundary          | The later exact tag/workflow attempt failed before AWS credential configuration; no ECR/S3 publication, Neon mutation, application/worker deployment, or F10 work occurred                                                                                            |
 
 ## Current release-gate reconciliation — 2026-08-18
 
@@ -54,7 +54,7 @@ connection strings, provider response bodies, or an authentic release claim.
 | GitHub development environment | Existing environment configured with one required reviewer, a `v*.*.*-dev.*` tag deployment policy, and `MMDC_DEVELOPMENT_MIGRATION_VERSION=20260817_230000_media_governance`; no runtime secret was uploaded                                     |
 | OIDC compatibility             | Local workflow and CloudFormation trust constraints agree on repository, tag ref, workflow ref, and audience; live `iam:GetRole` inspection is unavailable under the scoped `mmdc-iaac` operator policy                                           |
 | Host credential delivery       | Approved SSH key is present at `~/.ssh/mmdc-v3-development`; strict SSH access to app-02 succeeds. No host runtime/pull/backup env mutation was attempted in this IAM/OIDC pass                                                                   |
-| Release gate                   | `v0.1.0-dev.1` remains absent locally and remotely; no ECR image, desired state, workflow run, Neon mutation, application start, worker start, or F10 work was performed                                                                          |
+| Release gate                   | `v0.1.0-dev.1` exists locally/remotely at `fa2c3812fa7e54064f250928fc46837d7924d863`; run `32130129246` received protected-environment approval but failed before AWS publication; no Neon, host, service, or F10 transition occurred             |
 
 ## App-02 protected environment completion — 2026-08-18
 
@@ -73,6 +73,19 @@ inventory is retained.
 | Denials           | Unrelated media prefix and deployment-bucket location operations returned access denied; admin/search Meilisearch keys cannot administer keys; no S3 object was listed, created, changed, or deleted                                                                                                                                                                                                 |
 | Secret correction | A missing delimiter in ignored local `.env` had concatenated a duplicate S3 access-key assignment after the quoted search-only key. The duplicate matched the canonical standalone assignment and was removed without changing either credential's bytes; no tracked file contains the values                                                                                                        |
 | Service boundary  | Application and worker remain stopped; the existing private Meilisearch container remains unchanged; no release, migration, deployment, or F10 action occurred                                                                                                                                                                                                                                       |
+
+## Guarded release publication attempt — 2026-08-18
+
+| Check                | Sanitized result                                                                                                                                                                                                                                    |
+| -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Exact ref            | Lightweight tag `v0.1.0-dev.1` points to approved commit `fa2c3812fa7e54064f250928fc46837d7924d863`, which was reachable from `origin/development` when the tag was created; no other tag or workflow was created                                   |
+| Workflow             | [Run `32130129246`](https://github.com/mmdcjpaul/mmdc-core/actions/runs/32130129246), exact tag ref and commit; `release-quality` completed successfully                                                                                            |
+| Environment review   | GitHub records `approved` for protected environment `development` by reviewer `mmdcjpaul`; pending deployment count reached zero                                                                                                                    |
+| Publication result   | `publish-development-release` failed in `Validate trusted semantic tag and development ancestry` at `2026-08-18T11:12:29Z` because `rg` was unavailable on the `ubuntu-24.04` runner (`exit 127`)                                                   |
+| AWS boundary         | Failure occurred before `aws-actions/configure-aws-credentials`; ECR authentication/build/push/tag mapping and S3 desired-state publication steps were skipped                                                                                      |
+| Artifact boundary    | The always-run evidence upload found no `.artifacts/release` files because validation failed before artifact creation; no immutable digest, desired-state integrity, SBOM, or provenance record exists for this attempt                             |
+| Prohibited actions   | No retry, force-update, replacement tag, AWS mutation, host reconciliation, Neon operation, application/worker start, deployment, or F10 work occurred                                                                                              |
+| Required remediation | Preserve immutable failed tag/run evidence. A reviewed workflow fix must remove the undeclared `rg` runner dependency, pass focused acceptance, and receive separate approval for a new semantic development tag; `v0.1.0-dev.1` must not be reused |
 
 ## Precise blocker and input checklist
 
@@ -150,4 +163,4 @@ no other change set was created or executed.
 | Live processed-template result | CloudFormation processed template shows the expected split statements and unchanged deployment, backup, ECR, and OIDC boundaries                                                                                                                                     |
 | Live workload S3 probe         | Media bucket location allowed; `media` listing allowed; `private` listing denied HTTP 403; media-prefix object boundary allowed (nonexistent object returned not-found); private-prefix object denied HTTP 403; unrelated deployment-bucket location denied HTTP 403 |
 | Secret boundary                | Existing local `.env` values were loaded in memory only for the read-only workload probe; no values or objects were printed, retained, created, changed, or deleted                                                                                                  |
-| Remaining F09-T03 state        | Authentic release evidence is still absent, so the ticket remains fail-closed/Blocked; `v0.1.0-dev.1` was not created or pushed and F10 was not started                                                                                                              |
+| Remaining F09-T03 state        | Authentic run evidence is retained, but publication failed before AWS access, so no immutable ECR/desired-state/deployment evidence exists and the ticket remains fail-closed/Blocked; failed tag `v0.1.0-dev.1` is not reusable and F10 was not started             |
