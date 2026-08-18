@@ -1,12 +1,15 @@
 #!/usr/bin/env node
 
 import { spawnSync } from 'node:child_process';
-import { mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
 
 const root = process.cwd();
 const artifactRoot = path.resolve(process.env.CI_SECURITY_ARTIFACT_DIR ?? path.join(root, '.artifacts/F07-T02'));
+const containerEvidenceRoot = path.resolve(
+  process.env.CI_CONTAINER_EVIDENCE_DIR ?? path.join(root, '.artifacts/F06-T02')
+);
 const injection = process.env.CI_FAILURE_INJECTION?.trim();
 const protectedNames = [
   'AWS_ACCESS_KEY_ID',
@@ -138,6 +141,26 @@ const scanContainer = () => {
   return findings;
 };
 
+const requiredContainerEvidence = [
+  'application-image.digest',
+  'application-image.inspect.json',
+  'application-image.sbom.spdx.json',
+  'application-image.scan.sarif',
+  'application-image.blocking-policy.json'
+];
+
+const validateContainerEvidence = () =>
+  requiredContainerEvidence
+    .filter((name) => {
+      const file = path.join(containerEvidenceRoot, name);
+      try {
+        return !existsSync(file) || statSync(file).size === 0;
+      } catch {
+        return true;
+      }
+    })
+    .map((name) => ({ kind: 'missing-container-evidence', file: name }));
+
 const injected = (name) => injection === name || injection === 'scan';
 
 const runDependencyScan = () => {
@@ -155,6 +178,9 @@ export const runScans = () => {
   const containerFindings = injected('container-scan')
     ? [{ kind: 'injected-blocking-finding', file: 'fixture' }]
     : scanContainer();
+  const containerEvidenceFindings = injected('container-evidence')
+    ? [{ kind: 'injected-blocking-finding', file: 'fixture' }]
+    : validateContainerEvidence();
   const dependency = injected('dependency-scan')
     ? { status: 'failed', reason: 'injected-blocking-finding' }
     : runDependencyScan();
@@ -176,11 +202,17 @@ export const runScans = () => {
     findings: containerFindings,
     runtimeEvidence: 'container-smoke job retains SBOM, vulnerability, digest, and image metadata'
   });
+  writeReport('container-evidence', {
+    scan: 'container-evidence',
+    status: containerEvidenceFindings.length ? 'failed' : 'passed',
+    findings: containerEvidenceFindings
+  });
 
   const failures = [
     secretFindings.length,
     iacFindings.length,
     containerFindings.length,
+    containerEvidenceFindings.length,
     dependency.status === 'failed',
     license.status === 'failed'
   ].filter(Boolean).length;

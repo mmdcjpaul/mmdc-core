@@ -5,6 +5,7 @@ export CI=true
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 probe_root="$(mktemp -d "${TMPDIR:-/tmp}/mmdc-f07-t02.XXXXXX")"
+container_evidence_root="$probe_root/container-evidence"
 errors=0
 
 cleanup() {
@@ -27,8 +28,7 @@ expect_blocking_scan() {
   local scan_name="$1"
   local report_dir="$probe_root/$scan_name"
   mkdir -p "$report_dir"
-  if CI_SECURITY_OFFLINE=1 CI_FAILURE_INJECTION="$scan_name" CI_SECURITY_ARTIFACT_DIR="$report_dir" \
-    pnpm run ci:security-scans >"$report_dir/job.log" 2>&1; then
+  if run_security_with_fixture "$report_dir" "$scan_name"; then
     fail "injected $scan_name did not block the security-scans job"
   fi
   if ! node --input-type=module - "$report_dir" "$scan_name" <<'NODE'
@@ -47,6 +47,15 @@ NODE
 }
 
 cd "$ROOT"
+mkdir -p "$container_evidence_root"
+for evidence_file in \
+  application-image.digest \
+  application-image.inspect.json \
+  application-image.sbom.spdx.json \
+  application-image.scan.sarif \
+  application-image.blocking-policy.json; do
+  printf 'synthetic F07-T02 container evidence\n' >"$container_evidence_root/$evidence_file"
+done
 for command in node pnpm ruby rg git; do
   command -v "$command" >/dev/null 2>&1 || fail "required command is unavailable: $command"
 done
@@ -74,9 +83,18 @@ run_check 'credential-shaped log and artifact sanitization' \
 # GitHub workflow omits this test-only switch and runs the real dependency
 # triage command; offline mode only removes network variance from acceptance.
 run_check 'security scan coverage and sanitized report generation' \
-  env CI_SECURITY_OFFLINE=1 CI_SECURITY_ARTIFACT_DIR="$probe_root/passing" pnpm run ci:security-scans
+  env CI_SECURITY_OFFLINE=1 CI_SECURITY_ARTIFACT_DIR="$probe_root/passing" \
+  CI_CONTAINER_EVIDENCE_DIR="$container_evidence_root" pnpm run ci:security-scans
 
-for scan_name in secret-scan dependency-scan license-scan iac-scan container-scan; do
+run_security_with_fixture() {
+  local report_dir="$1"
+  local scan_name="$2"
+  CI_SECURITY_OFFLINE=1 CI_FAILURE_INJECTION="$scan_name" \
+    CI_SECURITY_ARTIFACT_DIR="$report_dir" CI_CONTAINER_EVIDENCE_DIR="$container_evidence_root" \
+    pnpm run ci:security-scans >"$report_dir/job.log" 2>&1
+}
+
+for scan_name in secret-scan dependency-scan license-scan iac-scan container-scan container-evidence; do
   expect_blocking_scan "$scan_name"
 done
 

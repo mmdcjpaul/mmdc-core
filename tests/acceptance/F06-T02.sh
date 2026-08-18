@@ -13,6 +13,9 @@ compose_file="$ROOT/infrastructure/compose/production.yml"
 runtime_env_file=""
 compose_config=""
 compose=()
+scanner_image='aquasec/trivy:0.56.2'
+scanner_user="$(id -u):$(id -g)"
+scanner_cache=""
 
 fail() {
   printf 'F06-T02 acceptance: %s\n' "$*" >&2
@@ -36,6 +39,13 @@ trap cleanup EXIT
 
 cd "$ROOT"
 mkdir -p "$evidence_root"
+legacy_trivy_cache="$evidence_root/trivy-cache"
+if [ -e "$legacy_trivy_cache" ] || [ -L "$legacy_trivy_cache" ]; then
+  if ! rm -rf -- "$legacy_trivy_cache"; then
+    fail 'stale retained Trivy cache could not be removed safely'
+    exit 1
+  fi
+fi
 
 for command in docker node pnpm grep curl; do
   command -v "$command" >/dev/null 2>&1 || fail "required command is unavailable: $command"
@@ -132,34 +142,49 @@ if (services.application.labels?.["com.mmdc.application.digest"] !== process.env
   fail 'rendered Compose service, port, lifecycle, resource, log, persistence, or digest policy failed'
 fi
 
-if ! docker scout sbom --format spdx --output "$evidence_root/application-image.sbom.spdx.json" "local://$image" >"$evidence_root/sbom.log" 2>&1; then
-  fail 'container SBOM generation failed; no SBOM evidence was fabricated'
-fi
-scanner_image='aquasec/trivy:0.56.2'
+scanner_cache="$fixture_root/trivy-cache"
+mkdir -p "$scanner_cache"
 if ! docker image inspect "$scanner_image" >/dev/null 2>&1; then
   run_check "pull pinned vulnerability scanner $scanner_image" docker pull "$scanner_image"
 fi
 if ! docker save "$image" -o "$fixture_root/application-image.tar" >"$evidence_root/image-save.log" 2>&1; then
   fail 'application image archive for scanning could not be created'
 fi
-mkdir -p "$evidence_root/trivy-cache"
 if ! docker run --rm \
+  --user "$scanner_user" \
   --volume "$fixture_root:/work:ro" \
   --volume "$evidence_root:/evidence" \
-  --volume "$evidence_root/trivy-cache:/root/.cache/trivy" \
+  --volume "$scanner_cache:/trivy-cache" \
   "$scanner_image" image --input /work/application-image.tar \
+  --cache-dir /trivy-cache --format spdx-json \
+  --output /evidence/application-image.sbom.spdx.json >"$evidence_root/sbom.log" 2>&1; then
+  fail 'container SBOM generation failed; no SBOM evidence was fabricated'
+fi
+if ! docker run --rm \
+  --user "$scanner_user" \
+  --volume "$fixture_root:/work:ro" \
+  --volume "$evidence_root:/evidence" \
+  --volume "$scanner_cache:/trivy-cache" \
+  "$scanner_image" image --input /work/application-image.tar \
+  --cache-dir /trivy-cache \
   --scanners vuln --severity HIGH,CRITICAL --exit-code 0 --format sarif \
   --output /evidence/application-image.scan.sarif >"$evidence_root/scan.log" 2>&1; then
   fail 'container vulnerability scan failed; no scan evidence was fabricated'
 fi
 if ! docker run --rm \
+  --user "$scanner_user" \
   --volume "$fixture_root:/work:ro" \
   --volume "$evidence_root:/evidence" \
-  --volume "$evidence_root/trivy-cache:/root/.cache/trivy" \
+  --volume "$scanner_cache:/trivy-cache" \
   "$scanner_image" image --input /work/application-image.tar \
+  --cache-dir /trivy-cache \
   --scanners vuln --pkg-types library --severity CRITICAL --exit-code 1 --format json \
   --output /evidence/application-image.blocking-policy.json >"$evidence_root/blocking-policy.log" 2>&1; then
   fail 'container scan found an untriaged blocking application-layer vulnerability'
+fi
+
+if [ -e "$evidence_root/trivy-cache" ]; then
+  fail 'Trivy cache must remain outside retained container evidence'
 fi
 
 if [ "$errors" -ne 0 ]; then exit 1; fi

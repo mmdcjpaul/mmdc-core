@@ -74,6 +74,15 @@ const lintWorkflow = () => {
     fail('container smoke must use commands available on the GitHub runner');
   if (!f06.includes('for command in docker node pnpm grep curl; do'))
     fail('container smoke must preflight grep for portable predicates');
+  if (f06.includes('docker scout sbom'))
+    fail('container smoke must not depend on an unpinned Docker Scout SBOM command');
+  if (!f06.includes("scanner_image='aquasec/trivy:0.56.2'"))
+    fail('container smoke must use the approved fixed-version Trivy scanner');
+  if (!f06.includes('--user "$scanner_user"') || !f06.includes('--cache-dir /trivy-cache'))
+    fail('container SBOM and scan commands must use the runner UID and explicit isolated cache path');
+  if (f06.includes('--volume "$evidence_root/trivy-cache:'))
+    fail('container smoke must not place the Trivy cache in retained evidence');
+  if (!f06.includes('application-image.sbom.spdx.json')) fail('container smoke must retain an SPDX SBOM');
   if (!ciJobs.includes("['install', '--frozen-lockfile']")) {
     fail('repository CI install command does not use frozen dependency installation');
   }
@@ -84,6 +93,14 @@ const lintWorkflow = () => {
   if (!workflow.includes('cancel-in-progress: false'))
     fail('migration/container jobs must not be cancellable in progress');
   if (!workflow.includes('actions/upload-artifact@v4')) fail('quality evidence artifact retention is missing');
+  const securityStart = workflow.indexOf('  security-scans:');
+  const securityEnd = securityStart < 0 ? -1 : workflow.slice(securityStart + 3).search(/\n  [a-z][a-z-]*:\n/);
+  const securityJob =
+    securityStart < 0
+      ? ''
+      : workflow.slice(securityStart, securityEnd < 0 ? workflow.length : securityStart + 3 + securityEnd);
+  if (!securityJob.includes('if: always()'))
+    fail('security scans must run to retain a blocking missing-evidence report');
 
   if ((f06.match(/docker build --pull --tag/g) ?? []).length !== 1) {
     fail('container smoke must build the production image exactly once');
