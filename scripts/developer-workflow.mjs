@@ -47,7 +47,8 @@ const parseEnvLine = (line) => {
 
 const loadLocalEnvironment = () => {
   const loaded = { ...process.env };
-  for (const candidate of [path.join(root, '.env'), envFile]) {
+  const candidates = process.env.CI === 'true' ? [] : [path.join(root, '.env'), envFile];
+  for (const candidate of candidates) {
     if (!existsSync(candidate)) continue;
     for (const line of readFileSync(candidate, 'utf8').split(/\r?\n/)) {
       if (line.trim().startsWith('#')) continue;
@@ -343,7 +344,7 @@ try {
     case 'container:smoke':
       if (actionArguments.includes('--help')) {
         console.log(
-          'container:smoke runs the production image smoke test after F06-T01 provides Dockerfile and Compose runtime.'
+          'container:smoke builds the production image once and runs the F06-T02 production-like Compose smoke test.'
         );
         break;
       }
@@ -352,7 +353,11 @@ try {
           'container:smoke requires Dockerfile from F06-T01; the production container is not present yet'
         );
       }
-      throw new Error('container:smoke has no configured production Compose target');
+      status = run('bash', [path.join(root, 'tests', 'acceptance', 'F06-T02.sh')], loadLocalEnvironment(), {
+        label: 'production-like container smoke',
+        remediation: 'Install Docker Desktop or Docker Engine with Compose v2, then rerun the smoke test.'
+      });
+      break;
     default:
       if (delegated[action]) {
         const environment = loadLocalEnvironment();

@@ -1,0 +1,282 @@
+name: MMDC foundation CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - development
+      - main
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  policy:
+    name: policy
+    runs-on: ubuntu-24.04
+    concurrency:
+      group: ci-policy-${{ github.workflow }}-${{ github.ref }}
+      cancel-in-progress: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.20.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.15.0
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - run: pnpm run ci:policy
+
+  install:
+    name: install
+    runs-on: ubuntu-24.04
+    concurrency:
+      group: ci-install-${{ github.workflow }}-${{ github.ref }}
+      cancel-in-progress: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.20.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.15.0
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - run: pnpm run ci:install
+
+  typecheck:
+    name: typecheck
+    runs-on: ubuntu-24.04
+    concurrency:
+      group: ci-typecheck-${{ github.workflow }}-${{ github.ref }}
+      cancel-in-progress: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.20.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.15.0
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - run: pnpm run ci:install
+      - run: pnpm run ci:typecheck
+
+  unit-schema:
+    name: unit-schema
+    runs-on: ubuntu-24.04
+    concurrency:
+      group: ci-unit-schema-${{ github.workflow }}-${{ github.ref }}
+      cancel-in-progress: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.20.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.15.0
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - run: pnpm run ci:install
+      - run: pnpm run ci:unit-schema
+
+  migration:
+    name: migration
+    runs-on: ubuntu-24.04
+    concurrency:
+      group: ci-migration-${{ github.workflow }}-${{ github.ref }}
+      cancel-in-progress: false
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: mmdc_local_ci
+          POSTGRES_USER: mmdc
+          POSTGRES_PASSWORD: ci-only-postgres-password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U mmdc -d mmdc_local_ci"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 30
+    env:
+      MMDC_ENVIRONMENT: ci
+      MMDC_DATABASE_MODE: postgres
+      MMDC_MEDIA_STORAGE: local
+      DATABASE_URL: postgresql://mmdc:ci-only-postgres-password@127.0.0.1:5432/mmdc_local_ci
+      DATABASE_DIRECT_URL: postgresql://mmdc:ci-only-postgres-password@127.0.0.1:5432/mmdc_local_ci
+      PAYLOAD_SECRET: ci-only-payload-secret
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.20.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.15.0
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - run: pnpm run ci:install
+      - run: pnpm run ci:migration
+
+  integration:
+    name: integration
+    runs-on: ubuntu-24.04
+    concurrency:
+      group: ci-integration-${{ github.workflow }}-${{ github.ref }}
+      cancel-in-progress: false
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: mmdc_local_ci
+          POSTGRES_USER: mmdc
+          POSTGRES_PASSWORD: ci-only-postgres-password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U mmdc -d mmdc_local_ci"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 30
+      meilisearch:
+        image: getmeili/meilisearch:v1.51.0
+        env:
+          MEILI_ENV: production
+          MEILI_MASTER_KEY: ci-only-meilisearch-master-key-1234567890
+          MEILI_NO_ANALYTICS: 'true'
+        ports:
+          - 7700:7700
+        options: >-
+          --health-cmd "wget -qO- http://127.0.0.1:7700/health >/dev/null 2>&1"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 30
+    env:
+      MMDC_ENVIRONMENT: ci
+      MMDC_DATABASE_MODE: postgres
+      MMDC_MEDIA_STORAGE: local
+      DATABASE_URL: postgresql://mmdc:ci-only-postgres-password@127.0.0.1:5432/mmdc_local_ci
+      DATABASE_DIRECT_URL: postgresql://mmdc:ci-only-postgres-password@127.0.0.1:5432/mmdc_local_ci
+      PAYLOAD_SECRET: ci-only-payload-secret
+      MEILISEARCH_URL: http://127.0.0.1:7700
+      MEILISEARCH_MASTER_KEY: ci-only-meilisearch-master-key-1234567890
+      MEILISEARCH_ADMIN_INDEXING_KEY: ci-only-meilisearch-admin-key-1234567890
+      MEILISEARCH_SEARCH_ONLY_KEY: ci-only-meilisearch-search-key-1234567890
+      MEILISEARCH_INDEX_PREFIX: mmdc-ci
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.20.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.15.0
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - run: pnpm run ci:install
+      - name: Create disposable Meilisearch integration keys
+        run: |
+          node --input-type=module <<'NODE'
+          import { appendFileSync } from 'node:fs';
+
+          const master = process.env.MEILISEARCH_MASTER_KEY;
+          const createKey = async (description, actions, indexes) => {
+            const response = await fetch('http://127.0.0.1:7700/keys', {
+              method: 'POST',
+              headers: { Authorization: `Bearer ${master}`, 'Content-Type': 'application/json' },
+              body: JSON.stringify({ description, actions, indexes })
+            });
+            if (!response.ok) throw new Error(`Meilisearch key creation failed: ${response.status}`);
+            return (await response.json()).key;
+          };
+          const admin = await createKey(
+            'MMDC CI disposable admin indexing',
+            ['indexes.create', 'indexes.get', 'indexes.delete', 'indexes.swap', 'documents.add', 'documents.get', 'documents.delete', 'tasks.get'],
+            ['*']
+          );
+          const search = await createKey('MMDC CI disposable search only', ['search'], ['mmdc-ci-foundation']);
+          appendFileSync(process.env.GITHUB_ENV, `MEILISEARCH_ADMIN_INDEXING_KEY=${admin}\nMEILISEARCH_SEARCH_ONLY_KEY=${search}\n`);
+          NODE
+      - run: pnpm run ci:integration
+
+  build:
+    name: build
+    runs-on: ubuntu-24.04
+    concurrency:
+      group: ci-build-${{ github.workflow }}-${{ github.ref }}
+      cancel-in-progress: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.20.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.15.0
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - run: pnpm run ci:install
+      - run: pnpm run ci:build
+      - name: Retain Next build metadata
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: next-build-metadata
+          path: .next/BUILD_ID
+          if-no-files-found: ignore
+
+  container-smoke:
+    name: container-smoke
+    runs-on: ubuntu-24.04
+    concurrency:
+      group: ci-container-smoke-${{ github.workflow }}-${{ github.ref }}
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.20.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.15.0
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - run: pnpm run ci:install
+      - run: pnpm run ci:container-smoke
+      - name: Retain image, SBOM, scan, and smoke evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: container-smoke-evidence
+          path: .artifacts/F06-T02
+          if-no-files-found: ignore
+
+  security-scans:
+    name: security-scans
+    runs-on: ubuntu-24.04
+    concurrency:
+      group: ci-security-scans-${{ github.workflow }}-${{ github.ref }}
+      cancel-in-progress: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.20.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.15.0
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - run: pnpm run ci:install
+      - run: pnpm run ci:security-scans

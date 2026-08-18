@@ -1,0 +1,122 @@
+#!/usr/bin/env node
+
+import { spawnSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
+import process from 'node:process';
+
+const root = process.cwd();
+const workflowPath = path.join(root, '.github/workflows/ci.yml');
+const workflow = readFileSync(workflowPath, 'utf8');
+const ciJobs = readFileSync(path.join(root, 'scripts/ci-jobs.mjs'), 'utf8');
+const stableJobs = [
+  'policy',
+  'install',
+  'typecheck',
+  'unit-schema',
+  'migration',
+  'integration',
+  'build',
+  'container-smoke',
+  'security-scans'
+];
+const failures = [];
+
+const fail = (message) => failures.push(message);
+
+const run = (arguments_, environment = process.env) =>
+  spawnSync(process.execPath, arguments_, {
+    cwd: root,
+    env: { ...environment, CI: 'true' },
+    encoding: 'utf8',
+    stdio: 'pipe'
+  });
+
+const lintWorkflow = () => {
+  const yaml = spawnSync('ruby', ['-e', 'require "yaml"; YAML.load_file(ARGV.fetch(0))', workflowPath], {
+    cwd: root,
+    encoding: 'utf8',
+    stdio: 'pipe'
+  });
+  if (yaml.status !== 0) fail(`workflow YAML parser failed: ${yaml.stderr.trim()}`);
+
+  if (!/^on:\s*$/m.test(workflow) || !/^\s+pull_request:\s*$/m.test(workflow)) {
+    fail('workflow must trigger on pull requests');
+  }
+  if (!/^\s+push:\s*$/m.test(workflow) || !/      - development\n      - main/.test(workflow)) {
+    fail('workflow must trigger on development and main protected-branch changes');
+  }
+  if (!/^permissions:\s*\n\s+contents:\s*read\s*$/m.test(workflow)) {
+    fail('workflow must declare least-privilege read-only contents permission');
+  }
+
+  for (const job of stableJobs) {
+    const declaration = new RegExp(`^  ${job.replace('-', '\\-')}:\\s*$`, 'm');
+    const name = new RegExp(`^    name: ${job.replace('-', '\\-')}\\s*$`, 'm');
+    if (!declaration.test(workflow) || !name.test(workflow)) fail(`stable job ${job} is missing or renamed`);
+    if (!new RegExp(`pnpm run ci:${job.replace('-', '\\-')}`).test(workflow)) {
+      fail(`stable job ${job} does not invoke its repository CI command`);
+    }
+  }
+  for (const image of ['postgres:17', 'getmeili/meilisearch:v1.51.0']) {
+    if (!workflow.includes(`image: ${image}`)) fail(`workflow is missing disposable service ${image}`);
+  }
+  if (!ciJobs.includes("['install', '--frozen-lockfile']")) {
+    fail('repository CI install command does not use frozen dependency installation');
+  }
+  if (workflow.includes('continue-on-error: true')) fail('CI failure propagation is weakened by continue-on-error');
+  if (workflow.includes('secrets.') || /\bAWS_(ACCESS|SECRET|SESSION)|\bNEON_(API|DATABASE)/.test(workflow)) {
+    fail('workflow references hosted credentials or environment secrets');
+  }
+  if (!workflow.includes('cancel-in-progress: false'))
+    fail('migration/container jobs must not be cancellable in progress');
+  if (!workflow.includes('actions/upload-artifact@v4')) fail('quality evidence artifact retention is missing');
+
+  const f06 = readFileSync(path.join(root, 'tests/acceptance/F06-T02.sh'), 'utf8');
+  if ((f06.match(/docker build --pull --tag/g) ?? []).length !== 1) {
+    fail('container smoke must build the production image exactly once');
+  }
+};
+
+const simulateJobs = () => {
+  for (const job of stableJobs) {
+    const description = run(['scripts/ci-jobs.mjs', 'describe', job]);
+    if (description.status !== 0) {
+      fail(`local simulation could not resolve stable job ${job}: ${description.stderr.trim()}`);
+      continue;
+    }
+    const parsed = JSON.parse(description.stdout);
+    if (parsed.job !== job || !Array.isArray(parsed.commands) || parsed.commands.length === 0) {
+      fail(`local simulation for ${job} has no executable command contract`);
+    }
+  }
+};
+
+const assertBlocking = (job, fault) => {
+  const result = run(['scripts/ci-jobs.mjs', job], { ...process.env, CI_FAILURE_INJECTION: fault });
+  if (result.status === 0) fail(`injected ${fault} did not block stable job ${job}`);
+};
+
+const simulateFailures = () => {
+  for (const job of ['policy', 'typecheck']) assertBlocking(job, 'stale-generated-type');
+  assertBlocking('policy', 'payload-pin');
+  assertBlocking('migration', 'migration');
+  assertBlocking('container-smoke', 'image-health');
+};
+
+const action = process.argv[2] ?? 'all';
+if (action === 'lint' || action === 'all') lintWorkflow();
+if (action === 'simulate' || action === 'all') {
+  simulateJobs();
+  simulateFailures();
+}
+
+if (!['lint', 'simulate', 'all'].includes(action)) fail(`unknown harness action: ${action}`);
+if (failures.length) {
+  for (const failure of failures) console.error(`CI workflow harness: ${failure}`);
+  process.exitCode = 1;
+} else {
+  console.log(
+    `CI workflow harness passed: linted ${stableJobs.length} stable jobs, simulated all jobs, and observed all injected blocking failures`
+  );
+}
