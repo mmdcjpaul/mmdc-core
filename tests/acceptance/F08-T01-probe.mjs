@@ -163,7 +163,7 @@ const refs = {
   EnvironmentName: 'development',
   OwnerTag: 'Engineering',
   GitHubRepository: 'mmdcjpaul/mmdc-core',
-  GitHubWorkflowRef: 'mmdcjpaul/mmdc-core/.github/workflows/release.yml@refs/heads/development',
+  GitHubWorkflowRef: 'mmdcjpaul/mmdc-core/.github/workflows/release.yml@refs/tags/v*.*.*-dev.*',
   GitHubOidcProviderArn: 'arn:aws:iam::123456789012:oidc-provider/token.actions.githubusercontent.com',
   SshCidr: '192.0.2.10/32',
   'AWS::AccountId': '123456789012',
@@ -460,29 +460,43 @@ for (const statement of [...publisherStatements, ...hostStatements]) {
 const trustStatement = resources.GitHubDevelopmentDeployRole.Properties.AssumeRolePolicyDocument.Statement[0];
 assert.equal(trustStatement.Principal.Federated.Ref, 'GitHubOidcProviderArn');
 assert.equal(trustStatement.Condition.StringEquals['token.actions.githubusercontent.com:aud'], 'sts.amazonaws.com');
-const trustedSub = render(trustStatement.Condition.StringLike['token.actions.githubusercontent.com:sub']);
+// GitHub emits the environment-scoped subject for a job that declares an
+// environment, so the release job's `sub` is never the `ref:refs/tags/...`
+// form. The development-tag restriction is carried by `job_workflow_ref`,
+// which a tag-triggered run pins to `refs/tags/<tag>`.
+const trustedSub = render(trustStatement.Condition.StringEquals['token.actions.githubusercontent.com:sub']);
 const trustedWorkflow = render(
   trustStatement.Condition.StringLike['token.actions.githubusercontent.com:job_workflow_ref']
 );
 assert.equal(
-  globMatches(trustedSub, 'repo:mmdcjpaul/mmdc-core:ref:refs/tags/v1.2.3-dev.4'),
-  true,
-  'OIDC trust allows an approved development tag'
+  trustedSub,
+  'repo:mmdcjpaul/mmdc-core:environment:development',
+  'OIDC trust binds the exact repository and protected environment'
 );
 assert.equal(
-  globMatches(trustedSub, 'repo:mmdcjpaul/mmdc-core:ref:refs/heads/development'),
+  globMatches(trustedWorkflow, 'mmdcjpaul/mmdc-core/.github/workflows/release.yml@refs/tags/v1.2.3-dev.4'),
+  true,
+  'OIDC trust allows the release workflow on an approved development tag'
+);
+assert.equal(
+  globMatches(trustedWorkflow, 'mmdcjpaul/mmdc-core/.github/workflows/release.yml@refs/heads/development'),
   false,
   'OIDC trust denies branch pushes'
 );
 assert.equal(
-  globMatches(trustedSub, 'repo:other/repo:ref:refs/tags/v1.2.3-dev.4'),
+  globMatches(trustedWorkflow, 'other/repo/.github/workflows/release.yml@refs/tags/v1.2.3-dev.4'),
   false,
   'OIDC trust denies another repository'
 );
 assert.equal(
-  globMatches(trustedSub, 'repo:mmdcjpaul/mmdc-core:ref:refs/tags/v1.2.3'),
+  globMatches(trustedWorkflow, 'mmdcjpaul/mmdc-core/.github/workflows/release.yml@refs/tags/v1.2.3'),
   false,
   'OIDC trust denies a production tag'
+);
+assert.equal(
+  globMatches(trustedWorkflow, 'mmdcjpaul/mmdc-core/.github/workflows/ci.yml@refs/tags/v1.2.3-dev.4'),
+  false,
+  'OIDC trust denies a different workflow file'
 );
 assert.equal(trustedWorkflow, refs.GitHubWorkflowRef, 'OIDC trust requires the exact approved workflow ref');
 const releaseWorkflow = readFileSync('.github/workflows/release.yml', 'utf8');
@@ -490,16 +504,21 @@ assert.match(releaseWorkflow, /on:\n  push:\n    tags:\n      - ['"]v\*\.\*\.\*-
 assert.match(releaseWorkflow, /publish:[\s\S]*?environment: development/);
 assert.match(releaseWorkflow, /publish:[\s\S]*?id-token: write/);
 assert.match(releaseWorkflow, /AWS_ROLE_ARN: arn:aws:iam::349762920349:role\/mmdc-v3-development-github-deploy/);
+// These are the claims GitHub actually presents for the protected `publish`
+// job on a `v*.*.*-dev.*` tag push, not a hand-written approximation.
 const releaseClaims = {
   'token.actions.githubusercontent.com:aud': 'sts.amazonaws.com',
-  'token.actions.githubusercontent.com:sub': 'repo:mmdcjpaul/mmdc-core:ref:refs/tags/v0.1.0-dev.1',
-  'token.actions.githubusercontent.com:job_workflow_ref': refs.GitHubWorkflowRef
+  'token.actions.githubusercontent.com:sub': 'repo:mmdcjpaul/mmdc-core:environment:development',
+  'token.actions.githubusercontent.com:job_workflow_ref':
+    'mmdcjpaul/mmdc-core/.github/workflows/release.yml@refs/tags/v0.1.0-dev.1'
 };
 assert.equal(conditionMatches(trustStatement, releaseClaims), true, 'OIDC trust accepts the exact release claims');
 assert.equal(
   conditionMatches(trustStatement, {
     ...releaseClaims,
-    'token.actions.githubusercontent.com:sub': 'repo:mmdcjpaul/mmdc-core:ref:refs/heads/development'
+    'token.actions.githubusercontent.com:sub': 'repo:mmdcjpaul/mmdc-core:ref:refs/heads/development',
+    'token.actions.githubusercontent.com:job_workflow_ref':
+      'mmdcjpaul/mmdc-core/.github/workflows/release.yml@refs/heads/development'
   }),
   false,
   'OIDC trust rejects a development branch push'
@@ -507,7 +526,8 @@ assert.equal(
 assert.equal(
   conditionMatches(trustStatement, {
     ...releaseClaims,
-    'token.actions.githubusercontent.com:job_workflow_ref': `${refs.GitHubWorkflowRef}-untrusted`
+    'token.actions.githubusercontent.com:job_workflow_ref':
+      'mmdcjpaul/mmdc-core/.github/workflows/untrusted.yml@refs/tags/v0.1.0-dev.1'
   }),
   false,
   'OIDC trust rejects a different workflow file/ref'
@@ -515,10 +535,19 @@ assert.equal(
 assert.equal(
   conditionMatches(trustStatement, {
     ...releaseClaims,
-    'token.actions.githubusercontent.com:sub': 'repo:mmdcjpaul/mmdc-core:ref:refs/tags/v0.1.0-rc.1'
+    'token.actions.githubusercontent.com:job_workflow_ref':
+      'mmdcjpaul/mmdc-core/.github/workflows/release.yml@refs/tags/v0.1.0-rc.1'
   }),
   false,
   'OIDC trust rejects a non-development tag'
+);
+assert.equal(
+  conditionMatches(trustStatement, {
+    ...releaseClaims,
+    'token.actions.githubusercontent.com:sub': 'repo:mmdcjpaul/mmdc-core:environment:production'
+  }),
+  false,
+  'OIDC trust rejects another environment'
 );
 
 const costRegister = readFileSync('docs/registers/cost-retention-register.md', 'utf8');

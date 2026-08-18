@@ -242,10 +242,18 @@ assert.match(ecr.Properties.LifecyclePolicy.LifecyclePolicyText, /imageCountMore
 const role = cloudformation.Resources.GitHubDevelopmentDeployRole;
 const trust = role.Properties.AssumeRolePolicyDocument.Statement[0];
 assert.equal(trust.Condition.StringEquals['token.actions.githubusercontent.com:aud'], 'sts.amazonaws.com');
+// The publish job declares `environment: development`, so GitHub emits the
+// environment-scoped subject. The development-tag restriction is enforced
+// through `job_workflow_ref`, which a tag run pins to `refs/tags/<tag>`.
 assert.match(
-  trust.Condition.StringLike['token.actions.githubusercontent.com:sub']['Fn::Sub'],
-  /refs\/tags\/v\*\.\*\.\*-dev\.\*/
+  trust.Condition.StringEquals['token.actions.githubusercontent.com:sub']['Fn::Sub'],
+  /^repo:\$\{GitHubRepository\}:environment:\$\{EnvironmentName\}$/
 );
+assert.match(
+  cloudformation.Parameters.GitHubWorkflowRef.Default,
+  /\/\.github\/workflows\/release\.yml@refs\/tags\/v\*\.\*\.\*-dev\.\*$/
+);
+assert.match(cloudformation.Parameters.GitHubWorkflowRef.AllowedPattern, /refs\/tags\/v\\\*/);
 assert.equal(role.Properties.MaxSessionDuration, 3600);
 const publisherStatements = role.Properties.Policies.flatMap(({ PolicyDocument }) => PolicyDocument.Statement);
 assert.ok(publisherStatements.some(({ Sid }) => Sid === 'WriteOnlyDevelopmentDesiredState'));

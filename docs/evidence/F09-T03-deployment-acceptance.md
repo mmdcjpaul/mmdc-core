@@ -1,15 +1,15 @@
 # F09-T03 deployment acceptance evidence
 
-| Field              | Value                                                                                                                                                                                              |
-| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Evidence state     | **Blocked — authentic external release evidence not supplied**                                                                                                                                     |
-| Local verifier     | Passed deterministic synthetic reconciliation and negative-path proof                                                                                                                              |
-| External verifier  | Authentic release run `32143820431` and green foundation run `32139737005` retained; the release run failed during OIDC credential configuration before ECR/S3 publication, with remediation recorded below                    |
-| Environment        | development; no F09-T03 runtime release is claimed                                                                                                                                                 |
-| Required release   | An explicitly approved `vMAJOR.MINOR.PATCH-dev.N` development tag                                                                                                                                  |
-| Required evidence  | Repository/ref/workflow, Git SHA, ECR digest, desired-state digest/integrity, migration version, web/worker digests, probes, final status, approvals, timestamps, and retained artifact references |
-| Synthetic evidence | Clearly labeled in `tests/acceptance/F09-T03-probe.mjs`; never promoted to acceptance                                                                                                              |
-| External mutation  | Exact tag `v0.1.0-dev.2` was pushed at the approved commit and triggered one protected workflow run; no ECR/S3 publication, Lightsail deployment, Neon mutation, or application release occurred   |
+| Field              | Value                                                                                                                                                                                                       |
+| ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Evidence state     | **Blocked — authentic external release evidence not supplied**                                                                                                                                              |
+| Local verifier     | Passed deterministic synthetic reconciliation and negative-path proof                                                                                                                                       |
+| External verifier  | Authentic release run `32143820431` and green foundation run `32139737005` retained; the release run failed during OIDC credential configuration before ECR/S3 publication, with remediation recorded below |
+| Environment        | development; no F09-T03 runtime release is claimed                                                                                                                                                          |
+| Required release   | An explicitly approved `vMAJOR.MINOR.PATCH-dev.N` development tag                                                                                                                                           |
+| Required evidence  | Repository/ref/workflow, Git SHA, ECR digest, desired-state digest/integrity, migration version, web/worker digests, probes, final status, approvals, timestamps, and retained artifact references          |
+| Synthetic evidence | Clearly labeled in `tests/acceptance/F09-T03-probe.mjs`; never promoted to acceptance                                                                                                                       |
+| External mutation  | Exact tag `v0.1.0-dev.2` was pushed at the approved commit and triggered one protected workflow run; no ECR/S3 publication, Lightsail deployment, Neon mutation, or application release occurred            |
 
 ## Release-preparation audit — 2026-08-18 (pre-reconciliation snapshot)
 
@@ -118,17 +118,17 @@ This records the separately approved `v0.1.0-dev.2` publication attempt. The
 semantic tag remains immutable and is not to be modified or reused. No host,
 Neon, service-start, GitHub-settings, or F10 operation was performed.
 
-| Check                | Sanitized result                                                                                                                                                                                                 |
-| -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Exact ref            | Annotated tag `v0.1.0-dev.2` points exactly to `ffb44d2e550510962532f270011d297bacb6bc33`; the tag was absent before creation and `v0.1.0-dev.1` remains unchanged at its original commit                               |
-| Foundation gate      | Run `32139737005` completed successfully for `ffb44d2e550510962532f270011d297bacb6bc33` before the tag was created                                                                                              |
-| Workflow             | [Run `32143820431`](https://github.com/mmdcjpaul/mmdc-core/actions/runs/32143820431), exact tag ref and commit; `release-quality` succeeded                                                                           |
-| Environment review   | Protected `development` review was recorded through GitHub's pending-deployment approval endpoint by the authenticated required reviewer `mmdcjpaul`; deployment record `5963982058` was created for the exact commit       |
-| Publication result   | `publish-development-release` failed at `aws-actions/configure-aws-credentials@v4` with `Not authorized to perform sts:AssumeRoleWithWebIdentity` before ECR authentication, image build, digest mapping, or S3 publication              |
-| AWS read-only check  | With `mmdc-iaac`, account `349762920349` and assumed role `MMDCIaacOperator` were verified; the exact ECR semantic tag, exact Git-SHA image tag, and deployment `desired.json` object were all absent after the failed run              |
-| Artifact boundary    | No `.artifacts/release` files were produced; the always-run upload therefore retained no publication evidence, and no immutable ECR digest or desired-state integrity exists for this attempt                                      |
-| Prohibited actions   | No retry, tag modification, ECR/S3 publication, host reconciliation, Neon operation, application/worker start, deployment, GitHub-settings change, or F10 work occurred                                      |
-| Acceptance state      | F09-T03 remains **Blocked** pending a successful authentic release publication and the separately guarded host-deployment/migration evidence required by the acceptance checklist                                    |
+| Check               | Sanitized result                                                                                                                                                                                                            |
+| ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Exact ref           | Annotated tag `v0.1.0-dev.2` points exactly to `ffb44d2e550510962532f270011d297bacb6bc33`; the tag was absent before creation and `v0.1.0-dev.1` remains unchanged at its original commit                                   |
+| Foundation gate     | Run `32139737005` completed successfully for `ffb44d2e550510962532f270011d297bacb6bc33` before the tag was created                                                                                                          |
+| Workflow            | [Run `32143820431`](https://github.com/mmdcjpaul/mmdc-core/actions/runs/32143820431), exact tag ref and commit; `release-quality` succeeded                                                                                 |
+| Environment review  | Protected `development` review was recorded through GitHub's pending-deployment approval endpoint by the authenticated required reviewer `mmdcjpaul`; deployment record `5963982058` was created for the exact commit       |
+| Publication result  | `publish-development-release` failed at `aws-actions/configure-aws-credentials@v4` with `Not authorized to perform sts:AssumeRoleWithWebIdentity` before ECR authentication, image build, digest mapping, or S3 publication |
+| AWS read-only check | With `mmdc-iaac`, account `349762920349` and assumed role `MMDCIaacOperator` were verified; the exact ECR semantic tag, exact Git-SHA image tag, and deployment `desired.json` object were all absent after the failed run  |
+| Artifact boundary   | No `.artifacts/release` files were produced; the always-run upload therefore retained no publication evidence, and no immutable ECR digest or desired-state integrity exists for this attempt                               |
+| Prohibited actions  | No retry, tag modification, ECR/S3 publication, host reconciliation, Neon operation, application/worker start, deployment, GitHub-settings change, or F10 work occurred                                                     |
+| Acceptance state    | F09-T03 remains **Blocked** pending a successful authentic release publication and the separately guarded host-deployment/migration evidence required by the acceptance checklist                                           |
 
 ## Precise blocker and input checklist
 
@@ -207,3 +207,30 @@ no other change set was created or executed.
 | Live workload S3 probe         | Media bucket location allowed; `media` listing allowed; `private` listing denied HTTP 403; media-prefix object boundary allowed (nonexistent object returned not-found); private-prefix object denied HTTP 403; unrelated deployment-bucket location denied HTTP 403 |
 | Secret boundary                | Existing local `.env` values were loaded in memory only for the read-only workload probe; no values or objects were printed, retained, created, changed, or deleted                                                                                                  |
 | Remaining F09-T03 state        | Authentic run evidence is retained, but publication failed before AWS access, so no immutable ECR/desired-state/deployment evidence exists and the ticket remains fail-closed/Blocked; failed tag `v0.1.0-dev.1` is not reusable and F10 was not started             |
+
+## GitHub OIDC trust-claim correction — 2026-08-18
+
+Root cause of the `v0.1.0-dev.2` publication failure. The trust policy on
+`mmdc-v3-development-github-deploy` required two claims the release workflow
+cannot emit, so `sts:AssumeRoleWithWebIdentity` was denied before any AWS
+access. Both mismatches were confirmed against the live deployed stack, not
+inferred from the repository template alone.
+
+| Claim              | Trust policy required (before)                        | Token actually presented                           |
+| ------------------ | ----------------------------------------------------- | -------------------------------------------------- |
+| `sub`              | `repo:mmdcjpaul/mmdc-core:ref:refs/tags/v*.*.*-dev.*` | `repo:mmdcjpaul/mmdc-core:environment:development` |
+| `job_workflow_ref` | `.../release.yml@refs/heads/development`              | `.../release.yml@refs/tags/v0.1.0-dev.2`           |
+
+| Check                   | Sanitized result                                                                                                                                                                                |
+| ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Failure evidence        | Run `32143820431` log: `Could not assume role with OIDC: Not authorized to perform sts:AssumeRoleWithWebIdentity`, emitted by `aws-actions/configure-aws-credentials@v4`                        |
+| Subject-claim basis     | `publish` declares `environment: development`, so GitHub emits the environment-scoped subject; repository OIDC customization is `use_default: true`, so no override alters the claim            |
+| Live pre-state          | Deployed `GitHubWorkflowRef` was `.../release.yml@refs/heads/development`; a tag-triggered run pins `job_workflow_ref` to `refs/tags/<tag>`, making the deployed value structurally unmatchable |
+| Template drift          | Repository template differed from the deployed template only by this correction; no unrelated drift existed                                                                                     |
+| Correction              | `sub` moved to `StringEquals` on `repo:${GitHubRepository}:environment:${EnvironmentName}`; the development-tag restriction now rides on `job_workflow_ref`                                     |
+| Change set              | `mmdc-oidc-trust-fix-20260818` / `f92a42e8-7cec-4d52-b61b-c83a5fe447d8`; one `Modify` of `GitHubDevelopmentDeployRole`, `Replacement: False`, `RequiresRecreation: Never`                       |
+| Execution               | Approved against the exact ARN, then executed with the documented CloudFormation execution role; `mmdc-v3-development` reached `UPDATE_COMPLETE` at `2026-08-18T14:01:46Z`                      |
+| Applied result          | Live processed template now shows the environment-scoped subject under `StringEquals` and the tag-pinned `job_workflow_ref`; only `GitHubDevelopmentDeployRole` changed                         |
+| Regression coverage     | `F08-T01` and `F09-T01` probes previously asserted the trust policy against claims GitHub never emits; both were corrected to the real claim shapes with added negative cases                   |
+| Boundary                | No ECR publication, S3 desired-state write, host reconciliation, Neon mutation, service start, tag creation/modification, or F10 work occurred                                                  |
+| Remaining F09-T03 state | The OIDC blocker is cleared, but no authentic publication has yet succeeded, so F09-T03 remains **Blocked** pending a successful release run and host-deployment evidence                       |
