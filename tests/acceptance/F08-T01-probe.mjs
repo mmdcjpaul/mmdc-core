@@ -204,8 +204,31 @@ function render(value) {
 function listActions(statement) {
   return Array.isArray(statement.Action) ? statement.Action : [statement.Action];
 }
-function allows(statement, action, resource) {
+function globMatches(glob, value) {
+  return new RegExp(`^${glob.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*')}$`).test(value);
+}
+function conditionMatches(statement, context = {}) {
+  for (const [operator, entries] of Object.entries(statement.Condition ?? {})) {
+    for (const [key, expected] of Object.entries(entries)) {
+      const actual = context[key];
+      const candidates = Array.isArray(expected) ? expected : [expected];
+      if (actual == null) return false;
+      const matched = candidates.some((candidate) => {
+        const resolved = candidate && typeof candidate === 'object' ? render(candidate) : candidate;
+        return operator === 'StringEquals'
+          ? actual === resolved
+          : operator === 'StringLike'
+            ? globMatches(resolved, actual)
+            : false;
+      });
+      if (!matched) return false;
+    }
+  }
+  return true;
+}
+function allows(statement, action, resource, context = {}) {
   if (statement.Effect !== 'Allow' || !listActions(statement).includes(action)) return false;
+  if (!conditionMatches(statement, context)) return false;
   const resourcesForStatement = Array.isArray(statement.Resource) ? statement.Resource : [statement.Resource];
   return resourcesForStatement.some((candidate) => {
     const pattern = render(candidate)
@@ -229,6 +252,130 @@ const ecrArn = render({ 'Fn::GetAtt': ['ApplicationRepository', 'Arn'] });
 const mediaPrefix = `${render({ 'Fn::GetAtt': ['MediaBucket', 'Arn'] })}/media/record-00000000/file.png`;
 const mediaOtherPrefix = `${render({ 'Fn::GetAtt': ['MediaBucket', 'Arn'] })}/private/file.png`;
 const stateArn = render({ 'Fn::GetAtt': ['DeploymentBucket', 'Arn'] });
+const backupArn = render({ 'Fn::GetAtt': ['BackupBucket', 'Arn'] });
+
+const mediaLocationStatement = hostStatements.find(({ Sid }) => Sid === 'GetDevelopmentMediaBucketLocation');
+const mediaListStatement = hostStatements.find(({ Sid }) => Sid === 'ListDevelopmentMediaPrefixOnly');
+assert.deepEqual(listActions(mediaLocationStatement), ['s3:GetBucketLocation']);
+assert.equal(mediaLocationStatement.Condition, undefined, 'GetBucketLocation has no ListBucket prefix condition');
+assert.deepEqual(listActions(mediaListStatement), ['s3:ListBucket']);
+assert.deepEqual(mediaListStatement.Condition, { StringLike: { 's3:prefix': ['media', 'media/*'] } });
+
+// Dependency-free IAM simulation for the effective allow boundary. Conditions
+// are evaluated so a prefix-scoped ListBucket statement cannot accidentally
+// look equivalent to an unconditioned bucket operation.
+assert.equal(
+  hostStatements.some((statement) =>
+    allows(statement, 's3:GetBucketLocation', render({ 'Fn::GetAtt': ['MediaBucket', 'Arn'] }))
+  ),
+  true,
+  'host can get the media bucket location without a prefix context'
+);
+assert.equal(
+  hostStatements.some((statement) => allows(statement, 's3:GetBucketLocation', stateArn)),
+  false,
+  'host cannot get the location of the deployment-state bucket'
+);
+for (const prefix of ['media', 'media/record-00000000/']) {
+  assert.equal(
+    hostStatements.some((statement) =>
+      allows(statement, 's3:ListBucket', render({ 'Fn::GetAtt': ['MediaBucket', 'Arn'] }), { 's3:prefix': prefix })
+    ),
+    true,
+    `host can list the approved media prefix ${prefix}`
+  );
+}
+for (const prefix of ['private', 'media-other']) {
+  assert.equal(
+    hostStatements.some((statement) =>
+      allows(statement, 's3:ListBucket', render({ 'Fn::GetAtt': ['MediaBucket', 'Arn'] }), { 's3:prefix': prefix })
+    ),
+    false,
+    `host cannot list the unapproved media prefix ${prefix}`
+  );
+}
+assert.equal(
+  hostStatements.some((statement) => allows(statement, 's3:GetObject', mediaPrefix)),
+  true,
+  'host can read media objects'
+);
+assert.equal(
+  hostStatements.some((statement) => allows(statement, 's3:PutObject', mediaPrefix)),
+  true,
+  'host can write media objects'
+);
+assert.equal(
+  hostStatements.some((statement) => allows(statement, 's3:DeleteObject', mediaPrefix)),
+  true,
+  'host can delete media objects for governed replacement/recovery'
+);
+assert.equal(
+  hostStatements.some((statement) => allows(statement, 's3:GetObject', mediaOtherPrefix)),
+  false,
+  'host cannot read objects outside media/'
+);
+assert.equal(
+  hostStatements.some((statement) => allows(statement, 's3:GetObject', `${stateArn}/desired.json`)),
+  true,
+  'host can read the exact desired-state object'
+);
+assert.equal(
+  hostStatements.some((statement) => allows(statement, 's3:PutObject', `${stateArn}/status/commit.json`)),
+  true,
+  'host can write bounded deployment status'
+);
+assert.equal(
+  hostStatements.some((statement) => allows(statement, 's3:PutObject', `${stateArn}/desired.json`)),
+  false,
+  'host cannot overwrite desired state'
+);
+assert.equal(
+  hostStatements.some((statement) => allows(statement, 's3:GetObject', `${stateArn}/status/commit.json`)),
+  false,
+  'host cannot read deployment status'
+);
+assert.equal(
+  hostStatements.some((statement) => allows(statement, 's3:GetBucketLocation', backupArn)),
+  true,
+  'host can get the dedicated backup bucket location'
+);
+assert.equal(
+  hostStatements.some((statement) => allows(statement, 's3:ListBucket', backupArn)),
+  true,
+  'host can list the dedicated backup bucket for recovery operations'
+);
+assert.equal(
+  hostStatements.some((statement) => allows(statement, 's3:PutObject', `${backupArn}/recovery.dump`)),
+  true,
+  'host can write backup objects only in the dedicated backup bucket'
+);
+assert.equal(
+  hostStatements.some((statement) => allows(statement, 's3:DeleteObject', `${backupArn}/recovery.dump`)),
+  false,
+  'host cannot delete backup objects'
+);
+assert.equal(
+  hostStatements.some((statement) => allows(statement, 's3:GetObject', `${backupArn}/recovery.dump`)),
+  true,
+  'host can read backup objects for recovery verification'
+);
+assert.equal(
+  hostStatements.some((statement) =>
+    allows(statement, 's3:GetObject', 'arn:aws:s3:::other-development-bucket/media/file.png')
+  ),
+  false,
+  'host cannot access an unrelated bucket'
+);
+assert.equal(
+  hostStatements.some((statement) => allows(statement, 'ecr:BatchGetImage', ecrArn)),
+  true,
+  'host can pull images from development ECR'
+);
+assert.equal(
+  hostStatements.some((statement) => allows(statement, 'ecr:PutImage', ecrArn)),
+  false,
+  'host cannot publish images'
+);
 
 assert.equal(
   publisherStatements.some((statement) => allows(statement, 'ecr:PutImage', `${ecrArn}`)),
@@ -317,8 +464,6 @@ const trustedSub = render(trustStatement.Condition.StringLike['token.actions.git
 const trustedWorkflow = render(
   trustStatement.Condition.StringLike['token.actions.githubusercontent.com:job_workflow_ref']
 );
-const globMatches = (glob, value) =>
-  new RegExp(`^${glob.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*')}$`).test(value);
 assert.equal(
   globMatches(trustedSub, 'repo:mmdcjpaul/mmdc-core:ref:refs/tags/v1.2.3-dev.4'),
   true,
@@ -340,6 +485,41 @@ assert.equal(
   'OIDC trust denies a production tag'
 );
 assert.equal(trustedWorkflow, refs.GitHubWorkflowRef, 'OIDC trust requires the exact approved workflow ref');
+const releaseWorkflow = readFileSync('.github/workflows/release.yml', 'utf8');
+assert.match(releaseWorkflow, /on:\n  push:\n    tags:\n      - ['"]v\*\.\*\.\*-dev\.\*['"]/);
+assert.match(releaseWorkflow, /publish:[\s\S]*?environment: development/);
+assert.match(releaseWorkflow, /publish:[\s\S]*?id-token: write/);
+assert.match(releaseWorkflow, /AWS_ROLE_ARN: arn:aws:iam::349762920349:role\/mmdc-v3-development-github-deploy/);
+const releaseClaims = {
+  'token.actions.githubusercontent.com:aud': 'sts.amazonaws.com',
+  'token.actions.githubusercontent.com:sub': 'repo:mmdcjpaul/mmdc-core:ref:refs/tags/v0.1.0-dev.1',
+  'token.actions.githubusercontent.com:job_workflow_ref': refs.GitHubWorkflowRef
+};
+assert.equal(conditionMatches(trustStatement, releaseClaims), true, 'OIDC trust accepts the exact release claims');
+assert.equal(
+  conditionMatches(trustStatement, {
+    ...releaseClaims,
+    'token.actions.githubusercontent.com:sub': 'repo:mmdcjpaul/mmdc-core:ref:refs/heads/development'
+  }),
+  false,
+  'OIDC trust rejects a development branch push'
+);
+assert.equal(
+  conditionMatches(trustStatement, {
+    ...releaseClaims,
+    'token.actions.githubusercontent.com:job_workflow_ref': `${refs.GitHubWorkflowRef}-untrusted`
+  }),
+  false,
+  'OIDC trust rejects a different workflow file/ref'
+);
+assert.equal(
+  conditionMatches(trustStatement, {
+    ...releaseClaims,
+    'token.actions.githubusercontent.com:sub': 'repo:mmdcjpaul/mmdc-core:ref:refs/tags/v0.1.0-rc.1'
+  }),
+  false,
+  'OIDC trust rejects a non-development tag'
+);
 
 const costRegister = readFileSync('docs/registers/cost-retention-register.md', 'utf8');
 for (const subject of [

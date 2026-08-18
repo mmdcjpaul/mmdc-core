@@ -430,9 +430,15 @@
                   "Resource": { "Fn::Sub": "${DeploymentBucket.Arn}/status/*" }
                 },
                 {
+                  "Sid": "GetDevelopmentMediaBucketLocation",
+                  "Effect": "Allow",
+                  "Action": "s3:GetBucketLocation",
+                  "Resource": { "Fn::GetAtt": ["MediaBucket", "Arn"] }
+                },
+                {
                   "Sid": "ListDevelopmentMediaPrefixOnly",
                   "Effect": "Allow",
-                  "Action": ["s3:GetBucketLocation", "s3:ListBucket"],
+                  "Action": "s3:ListBucket",
                   "Resource": { "Fn::GetAtt": ["MediaBucket", "Arn"] },
                   "Condition": { "StringLike": { "s3:prefix": ["media", "media/*"] } }
                 },
