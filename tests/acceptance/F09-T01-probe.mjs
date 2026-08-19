@@ -235,11 +235,11 @@ assert.doesNotMatch(workflow, /AWS_(?:ACCESS|SECRET|SESSION)_KEY|secrets\./);
 assert.doesNotMatch(workflow, /ssh\s+-|scp\s+/);
 assert.match(workflow, /retention-days: 14/);
 
-const ecr = cloudformation.Resources.ApplicationRepository;
+const ecr = cloudformation.Resources.CoreApplicationRepository;
 assert.equal(ecr.Properties.ImageTagMutability, 'IMMUTABLE');
 assert.equal(ecr.Properties.ImageScanningConfiguration.ScanOnPush, true);
 assert.match(ecr.Properties.LifecyclePolicy.LifecyclePolicyText, /imageCountMoreThan/);
-const role = cloudformation.Resources.GitHubDevelopmentDeployRole;
+const role = cloudformation.Resources.CoreGitHubDeployRole;
 const trust = role.Properties.AssumeRolePolicyDocument.Statement[0];
 assert.equal(trust.Condition.StringEquals['token.actions.githubusercontent.com:aud'], 'sts.amazonaws.com');
 // GitHub issues an immutable subject (`repo:<owner>@<id>/<repo>@<id>:...`)
@@ -260,7 +260,7 @@ assert.match(
 assert.match(cloudformation.Parameters.GitHubWorkflowRef.AllowedPattern, /refs\/tags\/v\\\*/);
 assert.equal(role.Properties.MaxSessionDuration, 3600);
 const publisherStatements = role.Properties.Policies.flatMap(({ PolicyDocument }) => PolicyDocument.Statement);
-assert.ok(publisherStatements.some(({ Sid }) => Sid === 'WriteOnlyDevelopmentDesiredState'));
+assert.ok(publisherStatements.some(({ Sid }) => Sid === 'WriteOnlyCoreDevelopmentDesiredState'));
 assert.equal(
   publisherStatements.some(({ Action }) => (Array.isArray(Action) ? Action : [Action]).includes('*')),
   false

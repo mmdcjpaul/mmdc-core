@@ -35,23 +35,41 @@
       ],
       "Description": "Approved accountable owner role for managed AWS resources."
     },
+    "V3GitHubRepository": {
+      "Type": "String",
+      "Default": "mmdc-tech/mmdc-v3",
+      "AllowedPattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$",
+      "Description": "Exact legacy mmdc-v3 repository allowed to publish to the retained v3 development resources."
+    },
+    "V3GitHubWorkflowRef": {
+      "Type": "String",
+      "Default": "mmdc-tech/mmdc-v3/.github/workflows/deploy-development.yml@refs/tags/v*.*.*-dev.*",
+      "AllowedPattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+/\\.github/workflows/[A-Za-z0-9_.-]+\\.yml@refs/tags/v\\*\\.\\*\\.\\*-dev\\.\\*$",
+      "Description": "Exact legacy mmdc-v3 deployment workflow and development-tag ref pattern."
+    },
+    "V3GitHubImmutableSubjectPrefix": {
+      "Type": "String",
+      "Default": "repo:mmdc-tech@132864871/mmdc-v3@1321696274",
+      "AllowedPattern": "^repo:[A-Za-z0-9_.-]+@[0-9]+/[A-Za-z0-9_.-]+@[0-9]+$",
+      "Description": "Immutable GitHub OIDC subject prefix for the retained mmdc-v3 repository."
+    },
     "GitHubRepository": {
       "Type": "String",
       "Default": "mmdcjpaul/mmdc-core",
       "AllowedPattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$",
-      "Description": "Exact GitHub owner/repository allowed to publish development releases."
+      "Description": "Exact mmdc-core owner/repository allowed to publish core development releases."
     },
     "GitHubWorkflowRef": {
       "Type": "String",
       "Default": "mmdcjpaul/mmdc-core/.github/workflows/release.yml@refs/tags/v*.*.*-dev.*",
       "AllowedPattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+/\\.github/workflows/[A-Za-z0-9_.-]+\\.yml@refs/tags/v\\*\\.\\*\\.\\*-dev\\.\\*$",
-      "Description": "Exact release workflow file plus the development-tag ref pattern allowed to assume the publisher role. A tag-triggered run emits job_workflow_ref pinned to refs/tags/<tag>, never to a branch, so this value must end with the development-tag glob."
+      "Description": "Exact mmdc-core release workflow file plus the development-tag ref pattern allowed to assume the core publisher role. A tag-triggered run emits job_workflow_ref pinned to refs/tags/<tag>, never to a branch, so this value must end with the development-tag glob."
     },
     "GitHubImmutableSubjectPrefix": {
       "Type": "String",
       "Default": "repo:mmdcjpaul@131217386/mmdc-core@1336726789",
       "AllowedPattern": "^repo:[A-Za-z0-9_.-]+@[0-9]+/[A-Za-z0-9_.-]+@[0-9]+$",
-      "Description": "Immutable GitHub OIDC subject prefix (owner@owner_id/repo@repo_id) as reported by the repository sub-claim customization endpoint. GitHub issues immutable subjects for this repository, so the plain owner/repo prefix alone never matches."
+      "Description": "Immutable GitHub OIDC subject prefix for mmdc-core as reported by the repository sub-claim customization endpoint."
     },
     "GitHubOidcProviderArn": {
       "Type": "String",
@@ -579,14 +597,14 @@
                 "StringLike": {
                   "token.actions.githubusercontent.com:sub": [
                     {
-                      "Fn::Sub": "repo:${GitHubRepository}:*"
+                      "Fn::Sub": "repo:${V3GitHubRepository}:*"
                     },
                     {
-                      "Fn::Sub": "${GitHubImmutableSubjectPrefix}:*"
+                      "Fn::Sub": "${V3GitHubImmutableSubjectPrefix}:*"
                     }
                   ],
                   "token.actions.githubusercontent.com:job_workflow_ref": {
-                    "Ref": "GitHubWorkflowRef"
+                    "Ref": "V3GitHubWorkflowRef"
                   }
                 }
               }
@@ -610,9 +628,11 @@
                   "Effect": "Allow",
                   "Action": [
                     "ecr:BatchCheckLayerAvailability",
+                    "ecr:BatchGetImage",
                     "ecr:CompleteLayerUpload",
                     "ecr:DescribeImages",
                     "ecr:DescribeRepositories",
+                    "ecr:GetDownloadUrlForLayer",
                     "ecr:InitiateLayerUpload",
                     "ecr:PutImage",
                     "ecr:UploadLayerPart"
@@ -630,6 +650,14 @@
                   "Action": "s3:PutObject",
                   "Resource": {
                     "Fn::Sub": "${DeploymentBucket.Arn}/desired.json"
+                  }
+                },
+                {
+                  "Sid": "ReadDevelopmentDeploymentStatus",
+                  "Effect": "Allow",
+                  "Action": "s3:GetObject",
+                  "Resource": {
+                    "Fn::Sub": "${DeploymentBucket.Arn}/status/*"
                   }
                 }
               ]
