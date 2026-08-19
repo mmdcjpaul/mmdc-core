@@ -49,9 +49,14 @@ const requiredResources = {
   BackupBucket: 'AWS::S3::Bucket',
   DeploymentBucket: 'AWS::S3::Bucket',
   GitHubDevelopmentDeployRole: 'AWS::IAM::Role',
+  CoreApplicationRepository: 'AWS::ECR::Repository',
+  CoreDeploymentBucket: 'AWS::S3::Bucket',
+  CoreGitHubDeployRole: 'AWS::IAM::Role',
   ApplicationStorageUser: 'AWS::IAM::User',
   DevelopmentInstance: 'AWS::Lightsail::Instance',
+  DevelopmentInstanceAdditional: 'AWS::Lightsail::Instance',
   DevelopmentStaticIp: 'AWS::Lightsail::StaticIp',
+  DevelopmentStaticIpAdditional: 'AWS::Lightsail::StaticIp',
   DevelopmentCpuAlarm: 'AWS::CloudWatch::Alarm',
   DevelopmentBurstCapacityAlarm: 'AWS::CloudWatch::Alarm',
   DevelopmentCloudFrontDistribution: 'AWS::CloudFront::Distribution',
@@ -166,6 +171,9 @@ const refs = {
   ProjectName: 'mmdc-v3',
   EnvironmentName: 'development',
   OwnerTag: 'Engineering',
+  V3GitHubRepository: 'mmdc-tech/mmdc-v3',
+  V3GitHubWorkflowRef: 'mmdc-tech/mmdc-v3/.github/workflows/deploy-development.yml@refs/tags/v*.*.*-dev.*',
+  V3GitHubImmutableSubjectPrefix: 'repo:mmdc-tech@132864871/mmdc-v3@1321696274',
   GitHubRepository: 'mmdcjpaul/mmdc-core',
   GitHubWorkflowRef: 'mmdcjpaul/mmdc-core/.github/workflows/release.yml@refs/tags/v*.*.*-dev.*',
   GitHubImmutableSubjectPrefix: 'repo:mmdcjpaul@131217386/mmdc-core@1336726789',
@@ -178,7 +186,9 @@ const values = {
   ApplicationRepository: 'mmdc-v3-development',
   MediaBucket: 'mmdc-v3-development-media-123456789012-ap-southeast-1',
   BackupBucket: 'mmdc-v3-development-backups-123456789012-ap-southeast-1',
-  DeploymentBucket: 'mmdc-v3-development-deployments-123456789012-ap-southeast-1'
+  DeploymentBucket: 'mmdc-v3-development-deployments-123456789012-ap-southeast-1',
+  CoreApplicationRepository: 'mmdc-core-development',
+  CoreDeploymentBucket: 'mmdc-core-development-deployments-123456789012-ap-southeast-1'
 };
 function render(value) {
   if (typeof value === 'string') return value;
@@ -187,7 +197,7 @@ function render(value) {
   if (value['Fn::GetAtt']) {
     const [logicalId, attribute] = value['Fn::GetAtt'];
     if (attribute === 'Arn' && values[logicalId]) {
-      if (logicalId === 'ApplicationRepository')
+      if (logicalId.endsWith('Repository'))
         return `arn:aws:ecr:ap-southeast-1:${refs['AWS::AccountId']}:repository/${values[logicalId]}`;
       return `arn:aws:s3:::${values[logicalId]}`;
     }
@@ -249,14 +259,20 @@ const publisherStatements = policyStatements(resources.GitHubDevelopmentDeployRo
   ...statement,
   renderedResource: render(statement.Resource)
 }));
+const corePublisherStatements = policyStatements(resources.CoreGitHubDeployRole).map((statement) => ({
+  ...statement,
+  renderedResource: render(statement.Resource)
+}));
 const hostStatements = policyStatements(resources.ApplicationStorageUser).map((statement) => ({
   ...statement,
   renderedResource: render(statement.Resource)
 }));
 const ecrArn = render({ 'Fn::GetAtt': ['ApplicationRepository', 'Arn'] });
+const coreEcrArn = render({ 'Fn::GetAtt': ['CoreApplicationRepository', 'Arn'] });
 const mediaPrefix = `${render({ 'Fn::GetAtt': ['MediaBucket', 'Arn'] })}/media/record-00000000/file.png`;
 const mediaOtherPrefix = `${render({ 'Fn::GetAtt': ['MediaBucket', 'Arn'] })}/private/file.png`;
 const stateArn = render({ 'Fn::GetAtt': ['DeploymentBucket', 'Arn'] });
+const coreStateArn = render({ 'Fn::GetAtt': ['CoreDeploymentBucket', 'Arn'] });
 const backupArn = render({ 'Fn::GetAtt': ['BackupBucket', 'Arn'] });
 
 const mediaLocationStatement = hostStatements.find(({ Sid }) => Sid === 'GetDevelopmentMediaBucketLocation');
@@ -388,6 +404,11 @@ assert.equal(
   'publisher allows image publication to the development repository'
 );
 assert.equal(
+  publisherStatements.some((statement) => allows(statement, 'ecr:BatchGetImage', `${ecrArn}`)),
+  true,
+  'legacy v3 publisher grants the ECR read action required by buildx'
+);
+assert.equal(
   publisherStatements.some((statement) => allows(statement, 'ecr:PutImage', `${ecrArn}-other`)),
   false,
   'publisher denies image publication to another repository'
@@ -406,6 +427,26 @@ assert.equal(
   publisherStatements.some((statement) => allows(statement, 's3:GetObject', `${stateArn}/desired.json`)),
   false,
   'publisher cannot read deployment state'
+);
+assert.equal(
+  publisherStatements.some((statement) => allows(statement, 's3:GetObject', `${stateArn}/status/commit.json`)),
+  true,
+  'legacy v3 publisher can read bounded host deployment status'
+);
+assert.equal(
+  corePublisherStatements.some((statement) => allows(statement, 'ecr:PutImage', coreEcrArn)),
+  true,
+  'core publisher can publish only to the core repository'
+);
+assert.equal(
+  corePublisherStatements.some((statement) => allows(statement, 'ecr:PutImage', ecrArn)),
+  false,
+  'core publisher cannot publish to the legacy v3 repository'
+);
+assert.equal(
+  corePublisherStatements.some((statement) => allows(statement, 's3:PutObject', `${coreStateArn}/desired.json`)),
+  true,
+  'core publisher writes only the core desired-state object'
 );
 
 assert.equal(
@@ -449,7 +490,7 @@ assert.equal(
   'host cannot list deployment-state bucket'
 );
 
-for (const statement of [...publisherStatements, ...hostStatements]) {
+for (const statement of [...publisherStatements, ...corePublisherStatements, ...hostStatements]) {
   if (statement.Effect !== 'Allow') continue;
   const actions = listActions(statement);
   const resourceList = Array.isArray(statement.Resource) ? statement.Resource : [statement.Resource];
@@ -462,7 +503,28 @@ for (const statement of [...publisherStatements, ...hostStatements]) {
     );
 }
 
-const trustStatement = resources.GitHubDevelopmentDeployRole.Properties.AssumeRolePolicyDocument.Statement[0];
+const v3TrustStatement = resources.GitHubDevelopmentDeployRole.Properties.AssumeRolePolicyDocument.Statement[0];
+const v3TrustedSubs = v3TrustStatement.Condition.StringLike['token.actions.githubusercontent.com:sub'].map(render);
+const v3TrustedWorkflow = render(
+  v3TrustStatement.Condition.StringLike['token.actions.githubusercontent.com:job_workflow_ref']
+);
+assert.deepEqual(
+  v3TrustedSubs,
+  ['repo:mmdc-tech/mmdc-v3:*', 'repo:mmdc-tech@132864871/mmdc-v3@1321696274:*'],
+  'legacy v3 role remains bound to the v3 repository'
+);
+assert.equal(
+  globMatches(v3TrustedWorkflow, 'mmdc-tech/mmdc-v3/.github/workflows/deploy-development.yml@refs/tags/v0.1.0-dev.9'),
+  true,
+  'legacy v3 role accepts only the v3 development deployment workflow'
+);
+assert.equal(
+  globMatches(v3TrustedWorkflow, 'mmdcjpaul/mmdc-core/.github/workflows/release.yml@refs/tags/v0.1.0-dev.5'),
+  false,
+  'legacy v3 role rejects the core release workflow'
+);
+
+const trustStatement = resources.CoreGitHubDeployRole.Properties.AssumeRolePolicyDocument.Statement[0];
 assert.equal(trustStatement.Principal.Federated.Ref, 'GitHubOidcProviderArn');
 assert.equal(trustStatement.Condition.StringEquals['token.actions.githubusercontent.com:aud'], 'sts.amazonaws.com');
 // GitHub issues an *immutable* subject for this repository
